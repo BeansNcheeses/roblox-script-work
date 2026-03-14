@@ -1,16 +1,24 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Flick Mobile", "Midnight")
+-- The 'Default' theme is usually the most stable for dragging on mobile
+local Window = Library.CreateLib("Flick Mobile v3", "Default")
 
+-- This ensures the UI can be moved around by dragging the top bar
 local Main = Window:NewTab("Combat")
-local Section = Main:NewSection("Aimbot")
+local CombatSection = Main:NewSection("Aimbot")
+local VisualSection = Main:NewSection("Visuals")
 
 local Settings = {
     Aimbot = false,
-    Freezing = false,
-    FOV = 150
+    FOV = 150,
+    ESP = false
 }
 
--- The actual Aim Function
+-- Keybind to toggle the menu visibility (Useful for mobile)
+Main:NewKeybind("Toggle UI", "Press to hide/show", Enum.KeyCode.RightControl, function()
+	Library:ToggleUI()
+end)
+
+-- Aimbot Logic (No FOV Zoom)
 local function GetClosest()
     local nearest = nil
     local last = math.huge
@@ -29,20 +37,42 @@ local function GetClosest()
     return nearest
 end
 
-Section:NewToggle("Enable Aimbot", "Locks camera to head", function(state)
+CombatSection:NewToggle("Enable Aimbot", "Lock camera to head", function(state)
     Settings.Aimbot = state
 end)
 
-Section:NewSlider("FOV Range", "Size of the aim circle", 500, 50, function(s)
+CombatSection:NewSlider("Aimbot Range", "Detection radius", 500, 50, function(s)
     Settings.FOV = s
 end)
 
--- Loop to run the aimbot
+-- ESP Toggle
+VisualSection:NewToggle("Player ESP", "See through walls", function(state)
+    Settings.ESP = state
+    if not state then
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v.Character and v.Character:FindFirstChild("Highlight") then
+                v.Character.Highlight:Destroy()
+            end
+        end
+    end
+end)
+
+-- Main Loop (Aimbot & ESP)
 game:GetService("RunService").RenderStepped:Connect(function()
     if Settings.Aimbot then
         local target = GetClosest()
         if target and target.Character and target.Character:FindFirstChild("Head") then
-            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Character.Head.Position)
+            local camPos = workspace.CurrentCamera.CFrame.Position
+            workspace.CurrentCamera.CFrame = CFrame.new(camPos, target.Character.Head.Position)
+        end
+    end
+    
+    if Settings.ESP then
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= game.Players.LocalPlayer and v.Character and not v.Character:FindFirstChild("Highlight") then
+                local hl = Instance.new("Highlight", v.Character)
+                hl.FillColor = Color3.fromRGB(255, 0, 0)
+            end
         end
     end
 end)

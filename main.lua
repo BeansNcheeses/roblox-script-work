@@ -24,11 +24,13 @@ OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.Draggable = true
 OpenBtn.MouseButton1Click:Connect(function() Library:ToggleUI() end)
 
--- FOV CIRCLE
+-- FOV CIRCLE (STRICT OUTLINE)
 local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 2
-FOVCircle.Color = Color3.fromRGB(255, 0, 0)
-FOVCircle.Transparency = 0.7
+FOVCircle.Thickness = 1.5 -- Thin outline
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Filled = false -- THIS ENSURES IT IS ONLY AN OUTLINE
+FOVCircle.Transparency = 1
+FOVCircle.NumSides = 64 -- Makes it look like a smooth circle
 
 -- TABS
 local Combat = Window:NewTab("Combat")
@@ -36,22 +38,16 @@ local Visuals = Window:NewTab("Visuals")
 local Movement = Window:NewTab("Movement")
 local Misc = Window:NewTab("Misc")
 
--- COMBAT SECTION
+-- COMBAT
 local AimSec = Combat:NewSection("Aimbot")
-AimSec:NewToggle("Enable Aimbot (Visible)", "Locks onto visible players", function(state)
-    Settings.Aimbot = state
-end)
-
-AimSec:NewSlider("Aimbot Range", "FOV Size", 800, 50, function(s)
-    Settings.FOV = s
-end)
+AimSec:NewToggle("Enable Aimbot", "Visible Only", function(state) Settings.Aimbot = state end)
+AimSec:NewSlider("Aimbot Range", "FOV Size", 800, 50, function(s) Settings.FOV = s end)
+AimSec:NewToggle("Show FOV Circle", "Toggle Circle Visibility", function(state) Settings.ShowFOV = state end)
 
 local HitSec = Combat:NewSection("Hitboxes")
-HitSec:NewSlider("Head Size", "Expand enemy heads", 20, 2, function(s)
-    Settings.HitboxSize = s
-end)
+HitSec:NewSlider("Head Size", "Expand enemy heads", 20, 2, function(s) Settings.HitboxSize = s end)
 
--- VISUALS SECTION
+-- VISUALS
 local EspSec = Visuals:NewSection("ESP")
 EspSec:NewToggle("Player Names & HP", "See everyone", function(state)
     Settings.ESP = state
@@ -64,58 +60,35 @@ EspSec:NewToggle("Player Names & HP", "See everyone", function(state)
     end
 end)
 
--- MOVEMENT SECTION (RE-CODED TO ENSURE IT SHOWS UP)
-local MoveSec = Movement:NewSection("Speed & Fly")
+-- MOVEMENT
+local MoveSec = Movement:NewSection("Speed & Physics")
 MoveSec:NewSlider("WalkSpeed", "Go fast", 250, 16, function(s)
-    if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
-    end
+    if game.Players.LocalPlayer.Character then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s end
 end)
+MoveSec:NewSlider("Gravity", "Normal is 196", 196, 0, function(s) workspace.Gravity = s end)
+MoveSec:NewToggle("NoClip", "Walk through walls", function(state) Settings.NoClip = state end)
 
-MoveSec:NewToggle("NoClip", "Walk through walls", function(state)
-    Settings.NoClip = state
-end)
-
-MoveSec:NewButton("Fly (Mobile)", "Fly towards camera", function()
-    local player = game.Players.LocalPlayer
-    local char = player.Character
-    local root = char.HumanoidRootPart
-    local camera = workspace.CurrentCamera
-    local flying = true
-    
-    local bg = Instance.new("BodyGyro", root)
-    bg.P = 9e4
-    bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bg.cframe = root.CFrame
-    
-    local bv = Instance.new("BodyVelocity", root)
-    bv.velocity = Vector3.new(0,0.1,0)
-    bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-    
-    task.spawn(function()
-        while flying do
-            task.wait()
-            bv.velocity = camera.CFrame.LookVector * Settings.FlySpeed
-            bg.cframe = camera.CFrame
-        end
-    end)
-end)
-
--- MISC SECTION
+-- MISC
 local MiscSec = Misc:NewSection("Utilities")
-MiscSec:NewButton("Full Bright", "Removes shadows", function()
+MiscSec:NewButton("Server Hop", "Join a different game", function()
+    local x = game:GetService("TeleportService")
+    local y = game:GetService("HttpService")
+    local z = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+    local function Hop()
+        local s = y:JSONDecode(game:HttpGet(z))
+        for _, v in pairs(s.data) do
+            if v.playing < v.maxPlayers then
+                x:TeleportToPlaceInstance(game.PlaceId, v.id)
+            end
+        end
+    end
+    Hop()
+end)
+
+MiscSec:NewButton("Full Bright", "No shadows", function()
     game:GetService("Lighting").Brightness = 2
     game:GetService("Lighting").ClockTime = 14
-    game:GetService("Lighting").FogEnd = 100000
     game:GetService("Lighting").GlobalShadows = false
-end)
-
-MiscSec:NewButton("Infinite Jump", "Jump in mid-air", function()
-    game:GetService("UserInputService").JumpRequest:Connect(function()
-        if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
-            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
-        end
-    end)
 end)
 
 -- WALL CHECK
@@ -139,19 +112,15 @@ game:GetService("RunService").RenderStepped:Connect(function()
     FOVCircle.Radius = Settings.FOV
     FOVCircle.Position = center
 
-    -- NoClip Logic
     if Settings.NoClip and lp.Character then
         for _, v in pairs(lp.Character:GetDescendants()) do
-            if v:IsA("BasePart") then
-                v.CanCollide = false
-            end
+            if v:IsA("BasePart") then v.CanCollide = false end
         end
     end
 
     if Settings.Aimbot and lp.Character then
         local nearestEnemy = nil
         local shortestDistance = math.huge
-
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character.Humanoid.Health > 0 then
                 local headPos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
@@ -165,11 +134,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                         end
                     end
                 end
-                
-                -- Hitbox
                 v.Character.Head.Size = Vector3.new(Settings.HitboxSize, Settings.HitboxSize, Settings.HitboxSize)
-                v.Character.Head.Transparency = 0.5
-                v.Character.Head.CanCollide = false
             end
         end
         if nearestEnemy then

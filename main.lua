@@ -1,10 +1,9 @@
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
--- We give the window a very specific name to track it
-local WindowName = "FlickChaosUI"
 local Window = Library.CreateLib("Flick Chaos Hub", "Midnight")
 
 local Settings = {
     Aimbot = false,
+    TeamCheck = false,
     ESP = false,
     FOV = 150,
     ShowFOV = true,
@@ -12,7 +11,7 @@ local Settings = {
     IsVisible = true
 }
 
--- 1. THE ULTIMATE TOGGLE
+-- 1. THE TOGGLE
 local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local OpenBtn = Instance.new("TextButton", ScreenGui)
 OpenBtn.Name = "FlickToggleBtn"
@@ -22,15 +21,12 @@ OpenBtn.Size = UDim2.new(0, 70, 0, 30)
 OpenBtn.Text = "TOGGLE"
 OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.Draggable = true
-OpenBtn.ZIndex = 10 -- Ensure it's above everything
+OpenBtn.ZIndex = 10
 
 OpenBtn.MouseButton1Click:Connect(function()
     Settings.IsVisible = not Settings.IsVisible
-    
-    -- Library toggle
     Library:ToggleUI()
     
-    -- Manual CoreGui sweep to force-disable input
     for _, v in pairs(game:GetService("CoreGui"):GetChildren()) do
         if v:IsA("ScreenGui") and (v.Name == "Flick Chaos Hub" or v:FindFirstChild("Main")) then
             v.Enabled = Settings.IsVisible
@@ -38,7 +34,7 @@ OpenBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- 2. FOV CIRCLE (Stable UI)
+-- 2. FOV CIRCLE
 local FOVGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local FOVFrame = Instance.new("Frame", FOVGui)
 local UIStroke = Instance.new("UIStroke", FOVFrame)
@@ -58,9 +54,22 @@ local Misc = Window:NewTab("Misc")
 
 -- COMBAT
 local AimSec = Combat:NewSection("Aimbot")
-AimSec:NewToggle("Enable Aimbot", "Visible Only", function(state) Settings.Aimbot = state end)
+AimSec:NewToggle("Enable Aimbot", "Locks onto visible", function(state) Settings.Aimbot = state end)
+AimSec:NewToggle("Team Check", "Ignore Teammates", function(state) Settings.TeamCheck = state end)
 AimSec:NewSlider("FOV Size", "Radius", 500, 50, function(s) Settings.FOV = s end)
 AimSec:NewToggle("Show FOV Circle", "Outline Visibility", function(state) Settings.ShowFOV = state end)
+
+local GunSec = Combat:NewSection("Gun Mods")
+GunSec:NewButton("Infinite Ammo", "Locks ammo count", function()
+    -- Attempting to find ammo variables in the game's garbage collection
+    for _, v in pairs(getgc(true)) do
+        if type(v) == "table" and (rawget(v, "Ammo") or rawget(v, "Clip")) then
+            v.Ammo = 999
+            v.Clip = 999
+            if rawget(v, "MaxAmmo") then v.MaxAmmo = 999 end
+        end
+    end
+end)
 
 -- VISUALS
 local EspSec = Visuals:NewSection("ESP")
@@ -122,6 +131,10 @@ game:GetService("RunService").RenderStepped:Connect(function()
 
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character.Humanoid.Health > 0 then
+                
+                -- Team Check logic
+                if Settings.TeamCheck and v.Team == lp.Team then continue end
+
                 local pos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
                 if onScreen then
                     local screenDist = (Vector2.new(pos.X, pos.Y) - center).Magnitude

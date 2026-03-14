@@ -1,44 +1,91 @@
--- Orion Library is much more stable for Delta Mobile
-local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
-local Window = OrionLib:MakeWindow({Name = "Flick Mobile v4", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
+-- Load Rayfield UI Library
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Settings = {
-    Aimbot = false,
-    ESP = false,
-    FOV = 150
-}
-
-local MainTab = Window:MakeTab({
-    Name = "Main",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
+local Window = Rayfield:CreateWindow({
+   Name = "Flick Mobile Hub",
+   LoadingTitle = "Loading Features...",
+   LoadingSubtitle = "By Gemini",
+   ConfigurationSaving = {
+      Enabled = false,
+   },
+   KeySystem = false -- No annoying key systems
 })
 
-MainTab:AddToggle({
-    Name = "Enable Aimbot",
-    Default = false,
-    Callback = function(Value)
-        Settings.Aimbot = Value
-    end    
+local Settings = { Aimbot = false, FOV = 150, ESP = false }
+
+-- --- TABS ---
+local CombatTab = Window:CreateTab("Combat")
+local VisualsTab = Window:CreateTab("Visuals")
+local PlayerTab = Window:CreateTab("Player")
+
+-- --- COMBAT FEATURES ---
+CombatTab:CreateToggle({
+   Name = "Enable Aimbot",
+   CurrentValue = false,
+   Callback = function(Value)
+      Settings.Aimbot = Value
+   end,
 })
 
-MainTab:AddToggle({
-    Name = "Enable ESP",
-    Default = false,
-    Callback = function(Value)
-        Settings.ESP = Value
-        if not Value then
-            for _, v in pairs(game.Players:GetPlayers()) do
-                if v.Character and v.Character:FindFirstChild("Highlight") then
-                    v.Character.Highlight:Destroy()
-                end
+CombatTab:CreateSlider({
+   Name = "Aimbot FOV Range",
+   Range = {50, 500},
+   Increment = 10,
+   Suffix = "Radius",
+   CurrentValue = 150,
+   Callback = function(Value)
+      Settings.FOV = Value
+   end,
+})
+
+-- --- VISUAL FEATURES ---
+VisualsTab:CreateToggle({
+   Name = "Enable Player ESP",
+   CurrentValue = false,
+   Callback = function(Value)
+      Settings.ESP = Value
+      -- Clean up highlights when turned off
+      if not Value then
+         for _, v in pairs(game.Players:GetPlayers()) do
+            if v.Character and v.Character:FindFirstChild("Highlight") then
+               v.Character.Highlight:Destroy()
             end
-        end
-    end    
+         end
+      end
+   end,
 })
 
--- The loop that makes it work
+-- --- PLAYER FEATURES ---
+PlayerTab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {16, 150},
+   Increment = 1,
+   Suffix = "Speed",
+   CurrentValue = 16,
+   Callback = function(Value)
+      if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+         game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+      end
+   end,
+})
+
+PlayerTab:CreateSlider({
+   Name = "JumpPower",
+   Range = {50, 300},
+   Increment = 5,
+   Suffix = "Power",
+   CurrentValue = 50,
+   Callback = function(Value)
+      if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+         game.Players.LocalPlayer.Character.Humanoid.UseJumpPower = true
+         game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+      end
+   end,
+})
+
+-- --- THE CORE LOOP (Makes Aimbot & ESP Work) ---
 game:GetService("RunService").RenderStepped:Connect(function()
+    -- Aimbot
     if Settings.Aimbot then
         local nearest = nil
         local last = math.huge
@@ -59,14 +106,15 @@ game:GetService("RunService").RenderStepped:Connect(function()
         end
     end
 
+    -- ESP
     if Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= game.Players.LocalPlayer and v.Character and not v.Character:FindFirstChild("Highlight") then
                 local hl = Instance.new("Highlight", v.Character)
                 hl.FillColor = Color3.fromRGB(255, 0, 0)
+                hl.FillTransparency = 0.5
+                hl.OutlineColor = Color3.fromRGB(255, 255, 255)
             end
         end
     end
 end)
-
-OrionLib:Init()

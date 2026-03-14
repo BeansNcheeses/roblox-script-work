@@ -8,6 +8,19 @@ local Settings = {
     FOV = 150
 }
 
+-- CREATE FLOATING TOGGLE BUTTON
+local ScreenGui = Instance.new("ScreenGui")
+local OpenBtn = Instance.new("TextButton")
+ScreenGui.Parent = game:GetService("CoreGui")
+OpenBtn.Parent = ScreenGui
+OpenBtn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+OpenBtn.Position = UDim2.new(0, 10, 0, 150)
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Text = "MENU"
+OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+OpenBtn.Draggable = true
+OpenBtn.MouseButton1Click:Connect(function() Library:ToggleUI() end)
+
 -- TABS
 local Main = Window:NewTab("Combat")
 local Visuals = Window:NewTab("Visuals")
@@ -23,7 +36,7 @@ AimSec:NewSlider("Aimbot Range", "FOV Radius", 500, 50, function(s)
     Settings.FOV = s
 end)
 
--- VISUALS SECTION
+-- VISUALS SECTION (FIXED ESP)
 local EspSec = Visuals:NewSection("ESP")
 EspSec:NewToggle("Player ESP", "Highlights everyone", function(state)
     Settings.ESP = state
@@ -37,27 +50,22 @@ EspSec:NewToggle("Player ESP", "Highlights everyone", function(state)
 end)
 
 -- PLAYER SECTION
-local MoveSec = Player:NewSection("Player Cheats")
-MoveSec:NewSlider("WalkSpeed", "Standard is 16", 150, 16, function(s)
-    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+local MoveSec = Player:NewSection("Movement")
+MoveSec:NewSlider("WalkSpeed", "Speed", 150, 16, function(s)
+    if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+    end
 end)
 
-MoveSec:NewSlider("JumpPower", "Standard is 50", 250, 50, function(s)
-    game.Players.LocalPlayer.Character.Humanoid.UseJumpPower = true
-    game.Players.LocalPlayer.Character.Humanoid.JumpPower = s
-end)
-
-MoveSec:NewButton("Infinite Jump", "Jump in the air", function()
+MoveSec:NewButton("Infinite Jump", "Jump in air", function()
     game:GetService("UserInputService").JumpRequest:Connect(function()
-        game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        end
     end)
 end)
 
-MoveSec:NewSlider("Gravity", "Standard is 196", 196, 0, function(s)
-    workspace.Gravity = s
-end)
-
--- THE LOOP (Aimbot & ESP)
+-- THE LOOP (Aimbot & Fixed ESP)
 game:GetService("RunService").RenderStepped:Connect(function()
     if Settings.Aimbot then
         local nearest = nil
@@ -84,6 +92,10 @@ game:GetService("RunService").RenderStepped:Connect(function()
             if v ~= game.Players.LocalPlayer and v.Character and not v.Character:FindFirstChild("Highlight") then
                 local hl = Instance.new("Highlight", v.Character)
                 hl.FillColor = Color3.fromRGB(255, 0, 0)
+                -- MOBILE FIX: Fill must not be 0 or 1 transparency to show up correctly
+                hl.FillTransparency = 0.5 
+                hl.OutlineTransparency = 0 -- Outlines may still be invisible on low-end phones
+                hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
             end
         end
     end

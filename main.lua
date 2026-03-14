@@ -7,7 +7,7 @@ local Settings = {
     FOV = 150
 }
 
--- 1. FLOATING TOGGLE BUTTON
+-- FLOATING TOGGLE
 local ScreenGui = Instance.new("ScreenGui")
 local OpenBtn = Instance.new("TextButton")
 ScreenGui.Parent = game:GetService("CoreGui")
@@ -20,25 +20,19 @@ OpenBtn.Text = "SHOW/HIDE"
 OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.TextSize = 10
 OpenBtn.Draggable = true
+OpenBtn.MouseButton1Click:Connect(function() Library:ToggleUI() end)
 
-OpenBtn.MouseButton1Click:Connect(function()
-    Library:ToggleUI()
-end)
-
--- 2. TABS
 local Main = Window:NewTab("Combat")
 local Visuals = Window:NewTab("Visuals")
 local Player = Window:NewTab("Movement")
 
--- 3. COMBAT (Aimbot with Wall Check)
 local AimSec = Main:NewSection("Aimbot")
-AimSec:NewToggle("Enable Aimbot", "Only targets visible players", function(state)
+AimSec:NewToggle("Enable Aimbot", "Wall Check Included", function(state)
     Settings.Aimbot = state
 end)
 
--- 4. VISUALS (Nametags + Health)
 local EspSec = Visuals:NewSection("Text ESP")
-EspSec:NewToggle("Show Names & Health", "Works through walls", function(state)
+EspSec:NewToggle("Show Names & Health", "Billboards", function(state)
     Settings.ESP = state
     if not state then
         for _, v in pairs(game.Players:GetPlayers()) do
@@ -49,33 +43,41 @@ EspSec:NewToggle("Show Names & Health", "Works through walls", function(state)
     end
 end)
 
--- 5. MOVEMENT
-local MoveSec = Player:NewSection("Cheats")
-MoveSec:NewSlider("Speed", "WalkSpeed", 150, 16, function(s)
-    if game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
-    end
-end)
-
--- VISIBILITY CHECK FUNCTION
+-- IMPROVED VISIBILITY CHECK
 local function IsVisible(targetPart)
-    local obs = workspace.CurrentCamera:GetPartsObscuringTarget({workspace.CurrentCamera.CFrame.Position, targetPart.Position}, {game.Players.LocalPlayer.Character, targetPart.Parent})
-    return #obs == 0
+    local camera = workspace.CurrentCamera
+    local character = game.Players.LocalPlayer.Character
+    if not character or not targetPart then return false end
+
+    local raycastParams = RaycastParams.new()
+    -- Ignore your own character and the person you are looking at
+    raycastParams.FilterDescendantsInstances = {character, targetPart.Parent}
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.IgnoreWater = true
+
+    local direction = (targetPart.Position - camera.CFrame.Position)
+    local raycastResult = workspace:Raycast(camera.CFrame.Position, direction, raycastParams)
+
+    -- If raycastResult is nil, it means nothing hit between you and the target
+    if raycastResult == nil then
+        return true
+    end
+    return false
 end
 
--- 6. THE CORE LOOP
 game:GetService("RunService").RenderStepped:Connect(function()
-    -- Aimbot Logic
     if Settings.Aimbot then
         local nearest = nil
         local last = math.huge
+        local mousePos = Vector2.new(workspace.CurrentCamera.ViewportSize.X/2, workspace.CurrentCamera.ViewportSize.Y/2)
+
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
                 local pos, onScreen = workspace.CurrentCamera:WorldToScreenPoint(v.Character.Head.Position)
                 if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(workspace.CurrentCamera.ViewportSize.X/2, workspace.CurrentCamera.ViewportSize.Y/2)).Magnitude
+                    local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
                     if dist < last and dist < Settings.FOV then
-                        -- WALL CHECK HERE
+                        -- Check if the head is actually visible
                         if IsVisible(v.Character.Head) then
                             last = dist
                             nearest = v
@@ -89,7 +91,6 @@ game:GetService("RunService").RenderStepped:Connect(function()
         end
     end
 
-    -- Name Tag ESP Logic
     if Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") then
@@ -99,9 +100,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     bill.Name = "MobileESP"
                     bill.AlwaysOnTop = true
                     bill.Size = UDim2.new(0, 100, 0, 50)
-                    bill.Adornee = v.Character.Head
                     bill.ExtentsOffset = Vector3.new(0, 3, 0)
-
                     local lbl = Instance.new("TextLabel", bill)
                     lbl.Name = "Tag"
                     lbl.Size = UDim2.new(1, 0, 1, 0)
@@ -111,9 +110,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     lbl.Font = Enum.Font.SourceSansBold
                     lbl.TextSize = 14
                 else
-                    -- Update Health on the label
-                    local health = math.floor(v.Character.Humanoid.Health)
-                    esp.Tag.Text = v.Name .. " [" .. health .. " HP]"
+                    esp.Tag.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. " HP]"
                 end
             end
         end

@@ -4,7 +4,9 @@ local Window = Library.CreateLib("Flick Mobile God Menu", "Midnight")
 local Settings = {
     Aimbot = false,
     ESP = false,
-    FOV = 150
+    FOV = 150,
+    ShowFOV = true,
+    TeamCheck = true
 }
 
 -- FLOATING TOGGLE
@@ -22,17 +24,33 @@ OpenBtn.TextSize = 10
 OpenBtn.Draggable = true
 OpenBtn.MouseButton1Click:Connect(function() Library:ToggleUI() end)
 
+-- FOV CIRCLE
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 2
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Filled = false
+FOVCircle.Transparency = 0.7
+
+-- TABS
 local Main = Window:NewTab("Combat")
 local Visuals = Window:NewTab("Visuals")
 local Player = Window:NewTab("Movement")
 
 local AimSec = Main:NewSection("Aimbot")
-AimSec:NewToggle("Enable Aimbot", "Wall Check Included", function(state)
+AimSec:NewToggle("Enable Aimbot", "Locks to Closest Enemy", function(state)
     Settings.Aimbot = state
 end)
 
-local EspSec = Visuals:NewSection("Text ESP")
-EspSec:NewToggle("Show Names & Health", "Billboards", function(state)
+AimSec:NewToggle("Team Check", "Ignore Teammates", function(state)
+    Settings.TeamCheck = state
+end)
+
+AimSec:NewSlider("Aimbot FOV", "Detection Range", 500, 50, function(s)
+    Settings.FOV = s
+end)
+
+local EspSec = Visuals:NewSection("Visuals")
+EspSec:NewToggle("Name/Health ESP", "See through walls", function(state)
     Settings.ESP = state
     if not state then
         for _, v in pairs(game.Players:GetPlayers()) do
@@ -43,57 +61,71 @@ EspSec:NewToggle("Show Names & Health", "Billboards", function(state)
     end
 end)
 
--- IMPROVED VISIBILITY CHECK
+-- IMPROVED WALL CHECK
 local function IsVisible(targetPart)
-    local camera = workspace.CurrentCamera
-    local character = game.Players.LocalPlayer.Character
-    if not character or not targetPart then return false end
-
-    local raycastParams = RaycastParams.new()
-    -- Ignore your own character and the person you are looking at
-    raycastParams.FilterDescendantsInstances = {character, targetPart.Parent}
-    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-    raycastParams.IgnoreWater = true
-
-    local direction = (targetPart.Position - camera.CFrame.Position)
-    local raycastResult = workspace:Raycast(camera.CFrame.Position, direction, raycastParams)
-
-    -- If raycastResult is nil, it means nothing hit between you and the target
-    if raycastResult == nil then
-        return true
-    end
-    return false
+    local char = game.Players.LocalPlayer.Character
+    local cam = workspace.CurrentCamera
+    if not char or not targetPart then return false end
+    
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {char, targetPart.Parent}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    
+    local result = workspace:Raycast(cam.CFrame.Position, targetPart.Position - cam.CFrame.Position, params)
+    return result == nil
 end
 
+-- CORE LOOP
 game:GetService("RunService").RenderStepped:Connect(function()
-    if Settings.Aimbot then
-        local nearest = nil
-        local last = math.huge
-        local mousePos = Vector2.new(workspace.CurrentCamera.ViewportSize.X/2, workspace.CurrentCamera.ViewportSize.Y/2)
+    local cam = workspace.CurrentCamera
+    local lp = game.Players.LocalPlayer
+    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+    
+    FOVCircle.Visible = Settings.ShowFOV
+    FOVCircle.Radius = Settings.FOV
+    FOVCircle.Position = center
+
+    if Settings.Aimbot and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        local nearestEnemy = nil
+        local shortestDistance = math.huge
 
         for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
-                local pos, onScreen = workspace.CurrentCamera:WorldToScreenPoint(v.Character.Head.Position)
+            if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+                
+                -- Team Check Logic
+                if Settings.TeamCheck and v.Team == lp.Team then 
+                    continue 
+                end
+
+                local headPos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
+                
                 if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
-                    if dist < last and dist < Settings.FOV then
-                        -- Check if the head is actually visible
-                        if IsVisible(v.Character.Head) then
-                            last = dist
-                            nearest = v
+                    -- Check if they are inside the FOV circle first
+                    local screenDist = (Vector2.new(headPos.X, headPos.Y) - center).Magnitude
+                    
+                    if screenDist < Settings.FOV then
+                        -- Check actual 3D distance to find the CLOSEST enemy
+                        local worldDist = (v.Character.HumanoidRootPart.Position - lp.Character.HumanoidRootPart.Position).Magnitude
+                        
+                        if worldDist < shortestDistance then
+                            if IsVisible(v.Character.Head) then
+                                shortestDistance = worldDist
+                                nearestEnemy = v
+                            end
                         end
                     end
                 end
             end
         end
-        if nearest then
-            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, nearest.Character.Head.Position)
+        
+        if nearestEnemy then
+            cam.CFrame = CFrame.new(cam.CFrame.Position, nearestEnemy.Character.Head.Position)
         end
     end
 
     if Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") then
+            if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") then
                 local esp = v.Character.Head:FindFirstChild("MobileESP")
                 if not esp then
                     local bill = Instance.new("BillboardGui", v.Character.Head)
@@ -105,7 +137,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     lbl.Name = "Tag"
                     lbl.Size = UDim2.new(1, 0, 1, 0)
                     lbl.BackgroundTransparency = 1
-                    lbl.TextColor3 = Color3.fromRGB(255, 0, 0)
+                    lbl.TextColor3 = (Settings.TeamCheck and v.Team == lp.Team) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
                     lbl.TextStrokeTransparency = 0
                     lbl.Font = Enum.Font.SourceSansBold
                     lbl.TextSize = 14

@@ -10,7 +10,7 @@ local Settings = {
     MenuOpen = true
 }
 
--- 1. FLOATING TOGGLE (The "Off-Screen" Fix)
+-- 1. THE TOGGLE FIX (GHOST MODE)
 local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local OpenBtn = Instance.new("TextButton", ScreenGui)
 OpenBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
@@ -22,28 +22,16 @@ OpenBtn.Draggable = true
 
 OpenBtn.MouseButton1Click:Connect(function()
     Settings.MenuOpen = not Settings.MenuOpen
+    Library:ToggleUI() -- Handles the Kavo visibility
     
-    local coreGui = game:GetService("CoreGui")
-    -- We look for Kavo's main frame
-    local mainUI = coreGui:FindFirstChild("Flick Chaos Hub - Mobile") or coreGui:FindFirstChild("Midnight")
-    
+    local mainUI = game:GetService("CoreGui"):FindFirstChild("Flick Chaos Hub - Mobile") or game:GetService("CoreGui"):FindFirstChild("Midnight")
     if mainUI then
-        local mainFrame = mainUI:FindFirstChildOfClass("Frame")
-        if mainFrame then
-            if Settings.MenuOpen then
-                -- Move back to center and show
-                mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175) 
-                mainUI.Enabled = true
-            else
-                -- Move far off-screen and hide
-                mainFrame.Position = UDim2.new(0, 0, 0, -2000) 
-                mainUI.Enabled = false
-            end
-        end
+        -- This forces the UI to stop taking touch inputs when hidden
+        mainUI.Enabled = Settings.MenuOpen 
     end
 end)
 
--- 2. UI-BASED FOV CIRCLE
+-- 2. FOV CIRCLE (STABLE VERSION)
 local FOVGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local FOVFrame = Instance.new("Frame", FOVGui)
 local UICorner = Instance.new("UICorner", FOVFrame)
@@ -66,7 +54,7 @@ local Misc = Window:NewTab("Misc")
 local AimSec = Combat:NewSection("Aimbot Settings")
 AimSec:NewToggle("Enable Aimbot", "Visible Only", function(state) Settings.Aimbot = state end)
 AimSec:NewSlider("FOV Size", "Circle Radius", 500, 50, function(s) Settings.FOV = s end)
-AimSec:NewToggle("Show FOV Circle", "Toggle Circle Visibility", function(state) Settings.ShowFOV = state end)
+AimSec:NewToggle("Show FOV Circle", "Outline Visibility", function(state) Settings.ShowFOV = state end)
 
 -- VISUALS
 local EspSec = Visuals:NewSection("Player ESP")
@@ -90,7 +78,7 @@ MoveSec:NewSlider("WalkSpeed", "Go fast", 250, 16, function(s)
 end)
 MoveSec:NewToggle("NoClip", "Walk through walls", function(state) Settings.NoClip = state end)
 
--- MISC
+-- MISC (Server Hop is Back)
 local MiscSec = Misc:NewSection("Extra Features")
 MiscSec:NewButton("Full Bright", "Brightness Fix", function()
     game:GetService("Lighting").Brightness = 2
@@ -98,7 +86,18 @@ MiscSec:NewButton("Full Bright", "Brightness Fix", function()
     game:GetService("Lighting").GlobalShadows = false
 end)
 
--- --- LOGIC ---
+MiscSec:NewButton("Server Hop", "Join New Lobby", function()
+    local ts = game:GetService("TeleportService")
+    local hs = game:GetService("HttpService")
+    local servers = hs:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+    for _, v in pairs(servers.data) do
+        if v.playing < v.maxPlayers then
+            ts:TeleportToPlaceInstance(game.PlaceId, v.id)
+        end
+    end
+end)
+
+-- --- CORE LOGIC ---
 local function IsVisible(targetPart)
     local char = game.Players.LocalPlayer.Character
     local cam = workspace.CurrentCamera
@@ -113,15 +112,11 @@ game:GetService("RunService").RenderStepped:Connect(function()
     local cam = workspace.CurrentCamera
     local lp = game.Players.LocalPlayer
     
+    -- Update FOV Circle
     FOVFrame.Visible = Settings.ShowFOV
     FOVFrame.Size = UDim2.new(0, Settings.FOV * 2, 0, Settings.FOV * 2)
 
-    if Settings.NoClip and lp.Character then
-        for _, v in pairs(lp.Character:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
-    end
-
+    -- Aimbot & ESP Logic
     if Settings.Aimbot and lp.Character then
         local nearestEnemy = nil
         local shortestDistance = math.huge
@@ -166,7 +161,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     lbl.TextSize = 14
                     lbl.Font = Enum.Font.SourceSansBold
                 else
-                    esp.Tag.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. " HP]"
+                    esp.Tag.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. "]"
                 end
             end
         end

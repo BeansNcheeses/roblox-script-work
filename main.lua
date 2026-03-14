@@ -6,7 +6,6 @@ local Settings = {
     ESP = false,
     FOV = 150,
     ShowFOV = true,
-    HitboxSize = 2,
     NoClip = false
 }
 
@@ -21,7 +20,7 @@ OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.Draggable = true
 OpenBtn.MouseButton1Click:Connect(function() Library:ToggleUI() end)
 
--- 2. UI-BASED FOV CIRCLE
+-- 2. UI-BASED FOV CIRCLE (HOLLOW OUTLINE)
 local FOVGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local FOVFrame = Instance.new("Frame", FOVGui)
 local UICorner = Instance.new("UICorner", FOVFrame)
@@ -40,15 +39,21 @@ local Visuals = Window:NewTab("Visuals")
 local Movement = Window:NewTab("Movement")
 local Misc = Window:NewTab("Misc")
 
--- COMBAT
-local AimSec = Combat:NewSection("Aimbot")
+-- COMBAT SECTION
+local AimSec = Combat:NewSection("Aimbot Settings")
 AimSec:NewToggle("Enable Aimbot", "Visible Only", function(state) Settings.Aimbot = state end)
-AimSec:NewSlider("Aimbot Range", "FOV Size", 800, 50, function(s) Settings.FOV = s end)
-AimSec:NewToggle("Show FOV Circle", "Toggle Circle", function(state) Settings.ShowFOV = state end)
 
--- VISUALS (Fixed ESP)
-local EspSec = Visuals:NewSection("Player Tracking")
-EspSec:NewToggle("Names & HP ESP", "Works through walls", function(state)
+AimSec:NewSlider("FOV Circle Size", "Adjust the circle radius", 500, 50, function(s)
+    Settings.FOV = s
+end)
+
+AimSec:NewToggle("Show FOV Circle", "Toggle Circle Visibility", function(state)
+    Settings.ShowFOV = state
+end)
+
+-- VISUALS SECTION
+local EspSec = Visuals:NewSection("Player ESP")
+EspSec:NewToggle("Names & HP ESP", "Billboard Tracking", function(state)
     Settings.ESP = state
     if not state then
         for _, v in pairs(game.Players:GetPlayers()) do
@@ -59,22 +64,23 @@ EspSec:NewToggle("Names & HP ESP", "Works through walls", function(state)
     end
 end)
 
--- MOVEMENT
-local MoveSec = Movement:NewSection("Physics")
+-- MOVEMENT SECTION
+local MoveSec = Movement:NewSection("Movement Cheats")
 MoveSec:NewSlider("WalkSpeed", "Go fast", 250, 16, function(s)
     if game.Players.LocalPlayer.Character then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s end
 end)
 MoveSec:NewToggle("NoClip", "Walk through walls", function(state) Settings.NoClip = state end)
 
--- MISC (Fixed Misc Tab)
+-- MISC SECTION
 local MiscSec = Misc:NewSection("Extra Features")
-MiscSec:NewButton("Full Bright", "Removes shadows", function()
+MiscSec:NewButton("Full Bright", "Brightness & Fog Fix", function()
     game:GetService("Lighting").Brightness = 2
     game:GetService("Lighting").ClockTime = 14
+    game:GetService("Lighting").FogEnd = 100000
     game:GetService("Lighting").GlobalShadows = false
 end)
 
-MiscSec:NewButton("Server Hop", "Join new server", function()
+MiscSec:NewButton("Server Hop", "Join different server", function()
     local TeleportService = game:GetService("TeleportService")
     local HttpService = game:GetService("HttpService")
     local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
@@ -100,6 +106,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
     local cam = workspace.CurrentCamera
     local lp = game.Players.LocalPlayer
     
+    -- Update FOV UI size based on Slider
     FOVFrame.Visible = Settings.ShowFOV
     FOVFrame.Size = UDim2.new(0, Settings.FOV * 2, 0, Settings.FOV * 2)
 
@@ -134,7 +141,6 @@ game:GetService("RunService").RenderStepped:Connect(function()
         end
     end
 
-    -- Separate ESP Logic Loop
     if Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character:FindFirstChild("Head") then

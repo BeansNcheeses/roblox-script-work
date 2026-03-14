@@ -1,28 +1,43 @@
-print("--- LOADING FLICK SCRIPT ---")
+-- Orion Library is much more stable for Delta Mobile
+local OrionLib = loadstring(game:HttpGet(('https://raw.githubusercontent.com/shlexware/Orion/main/source')))()
+local Window = OrionLib:MakeWindow({Name = "Flick Mobile v4", HidePremium = false, SaveConfig = true, ConfigFolder = "OrionTest"})
 
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Flick Mobile", "Default")
+local Settings = {
+    Aimbot = false,
+    ESP = false,
+    FOV = 150
+}
 
-local Main = Window:NewTab("Main")
-local Section = Main:NewSection("Features")
+local MainTab = Window:MakeTab({
+    Name = "Main",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
 
-local Settings = { Aimbot = false, ESP = false, FOV = 150 }
+MainTab:AddToggle({
+    Name = "Enable Aimbot",
+    Default = false,
+    Callback = function(Value)
+        Settings.Aimbot = Value
+    end    
+})
 
-Section:NewToggle("Aimbot", "Locks onto heads", function(state)
-    Settings.Aimbot = state
-end)
-
-Section:NewToggle("ESP", "Highlights players", function(state)
-    Settings.ESP = state
-    if not state then
-        for _, v in pairs(game.Players:GetPlayers()) do
-            if v.Character and v.Character:FindFirstChild("Highlight") then
-                v.Character.Highlight:Destroy()
+MainTab:AddToggle({
+    Name = "Enable ESP",
+    Default = false,
+    Callback = function(Value)
+        Settings.ESP = Value
+        if not Value then
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v.Character and v.Character:FindFirstChild("Highlight") then
+                    v.Character.Highlight:Destroy()
+                end
             end
         end
-    end
-end)
+    end    
+})
 
+-- The loop that makes it work
 game:GetService("RunService").RenderStepped:Connect(function()
     if Settings.Aimbot then
         local nearest = nil
@@ -47,10 +62,11 @@ game:GetService("RunService").RenderStepped:Connect(function()
     if Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= game.Players.LocalPlayer and v.Character and not v.Character:FindFirstChild("Highlight") then
-                Instance.new("Highlight", v.Character)
+                local hl = Instance.new("Highlight", v.Character)
+                hl.FillColor = Color3.fromRGB(255, 0, 0)
             end
         end
     end
 end)
 
-print("--- SCRIPT LOADED SUCCESSFULLY ---")
+OrionLib:Init()

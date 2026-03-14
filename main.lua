@@ -6,10 +6,11 @@ local Settings = {
     ESP = false,
     FOV = 150,
     ShowFOV = true,
-    NoClip = false
+    NoClip = false,
+    MenuOpen = true -- Track if menu is open
 }
 
--- 1. FLOATING TOGGLE
+-- 1. FLOATING TOGGLE (The Fix)
 local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local OpenBtn = Instance.new("TextButton", ScreenGui)
 OpenBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
@@ -18,9 +19,27 @@ OpenBtn.Size = UDim2.new(0, 70, 0, 30)
 OpenBtn.Text = "TOGGLE"
 OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.Draggable = true
-OpenBtn.MouseButton1Click:Connect(function() Library:ToggleUI() end)
 
--- 2. UI-BASED FOV CIRCLE (HOLLOW OUTLINE)
+-- This part fixes the "clicking through hidden menu" bug
+OpenBtn.MouseButton1Click:Connect(function()
+    Settings.MenuOpen = not Settings.MenuOpen
+    Library:ToggleUI()
+    
+    -- If menu is closed, we move the UI container way off screen 
+    -- so your fingers can't accidentally touch invisible sliders.
+    local coreGui = game:GetService("CoreGui")
+    local mainUI = coreGui:FindFirstChild("Flick Chaos Hub - Mobile") or coreGui:FindFirstChild("Midnight")
+    
+    if mainUI then
+        if Settings.MenuOpen then
+            mainUI.Enabled = true
+        else
+            mainUI.Enabled = false -- Disables all input to the menu
+        end
+    end
+end)
+
+-- 2. UI-BASED FOV CIRCLE
 local FOVGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local FOVFrame = Instance.new("Frame", FOVGui)
 local UICorner = Instance.new("UICorner", FOVFrame)
@@ -39,19 +58,13 @@ local Visuals = Window:NewTab("Visuals")
 local Movement = Window:NewTab("Movement")
 local Misc = Window:NewTab("Misc")
 
--- COMBAT SECTION
+-- COMBAT
 local AimSec = Combat:NewSection("Aimbot Settings")
 AimSec:NewToggle("Enable Aimbot", "Visible Only", function(state) Settings.Aimbot = state end)
+AimSec:NewSlider("FOV Size", "Circle Radius", 500, 50, function(s) Settings.FOV = s end)
+AimSec:NewToggle("Show FOV Circle", "Toggle Circle Visibility", function(state) Settings.ShowFOV = state end)
 
-AimSec:NewSlider("FOV Circle Size", "Adjust the circle radius", 500, 50, function(s)
-    Settings.FOV = s
-end)
-
-AimSec:NewToggle("Show FOV Circle", "Toggle Circle Visibility", function(state)
-    Settings.ShowFOV = state
-end)
-
--- VISUALS SECTION
+-- VISUALS
 local EspSec = Visuals:NewSection("Player ESP")
 EspSec:NewToggle("Names & HP ESP", "Billboard Tracking", function(state)
     Settings.ESP = state
@@ -64,31 +77,21 @@ EspSec:NewToggle("Names & HP ESP", "Billboard Tracking", function(state)
     end
 end)
 
--- MOVEMENT SECTION
+-- MOVEMENT
 local MoveSec = Movement:NewSection("Movement Cheats")
 MoveSec:NewSlider("WalkSpeed", "Go fast", 250, 16, function(s)
-    if game.Players.LocalPlayer.Character then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s end
+    if Settings.MenuOpen and game.Players.LocalPlayer.Character then 
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s 
+    end
 end)
 MoveSec:NewToggle("NoClip", "Walk through walls", function(state) Settings.NoClip = state end)
 
--- MISC SECTION
+-- MISC
 local MiscSec = Misc:NewSection("Extra Features")
-MiscSec:NewButton("Full Bright", "Brightness & Fog Fix", function()
+MiscSec:NewButton("Full Bright", "Brightness Fix", function()
     game:GetService("Lighting").Brightness = 2
     game:GetService("Lighting").ClockTime = 14
-    game:GetService("Lighting").FogEnd = 100000
     game:GetService("Lighting").GlobalShadows = false
-end)
-
-MiscSec:NewButton("Server Hop", "Join different server", function()
-    local TeleportService = game:GetService("TeleportService")
-    local HttpService = game:GetService("HttpService")
-    local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
-    for _, v in pairs(Servers.data) do
-        if v.playing < v.maxPlayers then
-            TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id)
-        end
-    end
 end)
 
 -- --- LOGIC ---
@@ -106,7 +109,6 @@ game:GetService("RunService").RenderStepped:Connect(function()
     local cam = workspace.CurrentCamera
     local lp = game.Players.LocalPlayer
     
-    -- Update FOV UI size based on Slider
     FOVFrame.Visible = Settings.ShowFOV
     FOVFrame.Size = UDim2.new(0, Settings.FOV * 2, 0, Settings.FOV * 2)
 
@@ -160,7 +162,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     lbl.TextSize = 14
                     lbl.Font = Enum.Font.SourceSansBold
                 else
-                    esp.Tag.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. " HP]"
+                    esp.Tag.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. "]"
                 end
             end
         end

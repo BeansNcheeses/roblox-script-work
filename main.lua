@@ -7,10 +7,10 @@ local Settings = {
     FOV = 150,
     ShowFOV = true,
     NoClip = false,
-    MenuOpen = true -- Track if menu is open
+    MenuOpen = true
 }
 
--- 1. FLOATING TOGGLE (The Fix)
+-- 1. FLOATING TOGGLE (The "Off-Screen" Fix)
 local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local OpenBtn = Instance.new("TextButton", ScreenGui)
 OpenBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
@@ -20,21 +20,25 @@ OpenBtn.Text = "TOGGLE"
 OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.Draggable = true
 
--- This part fixes the "clicking through hidden menu" bug
 OpenBtn.MouseButton1Click:Connect(function()
     Settings.MenuOpen = not Settings.MenuOpen
-    Library:ToggleUI()
     
-    -- If menu is closed, we move the UI container way off screen 
-    -- so your fingers can't accidentally touch invisible sliders.
     local coreGui = game:GetService("CoreGui")
+    -- We look for Kavo's main frame
     local mainUI = coreGui:FindFirstChild("Flick Chaos Hub - Mobile") or coreGui:FindFirstChild("Midnight")
     
     if mainUI then
-        if Settings.MenuOpen then
-            mainUI.Enabled = true
-        else
-            mainUI.Enabled = false -- Disables all input to the menu
+        local mainFrame = mainUI:FindFirstChildOfClass("Frame")
+        if mainFrame then
+            if Settings.MenuOpen then
+                -- Move back to center and show
+                mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175) 
+                mainUI.Enabled = true
+            else
+                -- Move far off-screen and hide
+                mainFrame.Position = UDim2.new(0, 0, 0, -2000) 
+                mainUI.Enabled = false
+            end
         end
     end
 end)
@@ -80,7 +84,7 @@ end)
 -- MOVEMENT
 local MoveSec = Movement:NewSection("Movement Cheats")
 MoveSec:NewSlider("WalkSpeed", "Go fast", 250, 16, function(s)
-    if Settings.MenuOpen and game.Players.LocalPlayer.Character then 
+    if game.Players.LocalPlayer.Character then 
         game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s 
     end
 end)
@@ -162,7 +166,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     lbl.TextSize = 14
                     lbl.Font = Enum.Font.SourceSansBold
                 else
-                    esp.Tag.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. "]"
+                    esp.Tag.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. " HP]"
                 end
             end
         end

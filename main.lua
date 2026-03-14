@@ -7,15 +7,12 @@ local Settings = {
     FOV = 150,
     ShowFOV = true,
     HitboxSize = 2,
-    FlySpeed = 50,
     NoClip = false
 }
 
--- FLOATING TOGGLE
-local ScreenGui = Instance.new("ScreenGui")
-local OpenBtn = Instance.new("TextButton")
-ScreenGui.Parent = game:GetService("CoreGui")
-OpenBtn.Parent = ScreenGui
+-- 1. FLOATING TOGGLE
+local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local OpenBtn = Instance.new("TextButton", ScreenGui)
 OpenBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
 OpenBtn.Position = UDim2.new(0, 10, 0, 200)
 OpenBtn.Size = UDim2.new(0, 70, 0, 30)
@@ -24,13 +21,19 @@ OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.Draggable = true
 OpenBtn.MouseButton1Click:Connect(function() Library:ToggleUI() end)
 
--- FOV CIRCLE (STRICT OUTLINE)
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5 -- Thin outline
-FOVCircle.Color = Color3.fromRGB(255, 255, 255)
-FOVCircle.Filled = false -- THIS ENSURES IT IS ONLY AN OUTLINE
-FOVCircle.Transparency = 1
-FOVCircle.NumSides = 64 -- Makes it look like a smooth circle
+-- 2. NEW UI-BASED FOV CIRCLE (HOLLOW)
+local FOVGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
+local FOVFrame = Instance.new("Frame", FOVGui)
+local UICorner = Instance.new("UICorner", FOVFrame)
+local UIStroke = Instance.new("UIStroke", FOVFrame)
+
+FOVFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+FOVFrame.BackgroundTransparency = 1 -- Transparent inside
+FOVFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+UIStroke.Color = Color3.fromRGB(255, 255, 255)
+UIStroke.Thickness = 2
+UICorner.CornerRadius = UDim.new(1, 0) -- Makes it a perfect circle
 
 -- TABS
 local Combat = Window:NewTab("Combat")
@@ -42,54 +45,29 @@ local Misc = Window:NewTab("Misc")
 local AimSec = Combat:NewSection("Aimbot")
 AimSec:NewToggle("Enable Aimbot", "Visible Only", function(state) Settings.Aimbot = state end)
 AimSec:NewSlider("Aimbot Range", "FOV Size", 800, 50, function(s) Settings.FOV = s end)
-AimSec:NewToggle("Show FOV Circle", "Toggle Circle Visibility", function(state) Settings.ShowFOV = state end)
+AimSec:NewToggle("Show FOV Circle", "Toggle Circle", function(state) Settings.ShowFOV = state end)
 
-local HitSec = Combat:NewSection("Hitboxes")
-HitSec:NewSlider("Head Size", "Expand enemy heads", 20, 2, function(s) Settings.HitboxSize = s end)
-
--- VISUALS
-local EspSec = Visuals:NewSection("ESP")
-EspSec:NewToggle("Player Names & HP", "See everyone", function(state)
-    Settings.ESP = state
-    if not state then
-        for _, v in pairs(game.Players:GetPlayers()) do
-            if v.Character and v.Character:FindFirstChild("Head") and v.Character.Head:FindFirstChild("MobileESP") then
-                v.Character.Head.MobileESP:Destroy()
-            end
+local ModSec = Combat:NewSection("Gun Mods")
+ModSec:NewButton("No Recoil / No Spread", "Perfect Accuracy", function()
+    for _, v in pairs(getgc(true)) do
+        if type(v) == "table" and rawget(v, "Recoil") then
+            v.Recoil = 0
+            v.Spread = 0
         end
     end
 end)
 
 -- MOVEMENT
-local MoveSec = Movement:NewSection("Speed & Physics")
+local MoveSec = Movement:NewSection("Physics")
 MoveSec:NewSlider("WalkSpeed", "Go fast", 250, 16, function(s)
     if game.Players.LocalPlayer.Character then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s end
 end)
 MoveSec:NewSlider("Gravity", "Normal is 196", 196, 0, function(s) workspace.Gravity = s end)
 MoveSec:NewToggle("NoClip", "Walk through walls", function(state) Settings.NoClip = state end)
 
--- MISC
-local MiscSec = Misc:NewSection("Utilities")
-MiscSec:NewButton("Server Hop", "Join a different game", function()
-    local x = game:GetService("TeleportService")
-    local y = game:GetService("HttpService")
-    local z = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
-    local function Hop()
-        local s = y:JSONDecode(game:HttpGet(z))
-        for _, v in pairs(s.data) do
-            if v.playing < v.maxPlayers then
-                x:TeleportToPlaceInstance(game.PlaceId, v.id)
-            end
-        end
-    end
-    Hop()
-end)
-
-MiscSec:NewButton("Full Bright", "No shadows", function()
-    game:GetService("Lighting").Brightness = 2
-    game:GetService("Lighting").ClockTime = 14
-    game:GetService("Lighting").GlobalShadows = false
-end)
+-- VISUALS
+local EspSec = Visuals:NewSection("ESP")
+EspSec:NewToggle("Names & HP", "See everyone", function(state) Settings.ESP = state end)
 
 -- WALL CHECK
 local function IsVisible(targetPart)
@@ -106,11 +84,10 @@ end
 game:GetService("RunService").RenderStepped:Connect(function()
     local cam = workspace.CurrentCamera
     local lp = game.Players.LocalPlayer
-    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
     
-    FOVCircle.Visible = Settings.ShowFOV
-    FOVCircle.Radius = Settings.FOV
-    FOVCircle.Position = center
+    -- Update FOV UI
+    FOVFrame.Visible = Settings.ShowFOV
+    FOVFrame.Size = UDim2.new(0, Settings.FOV * 2, 0, Settings.FOV * 2)
 
     if Settings.NoClip and lp.Character then
         for _, v in pairs(lp.Character:GetDescendants()) do
@@ -121,6 +98,8 @@ game:GetService("RunService").RenderStepped:Connect(function()
     if Settings.Aimbot and lp.Character then
         local nearestEnemy = nil
         local shortestDistance = math.huge
+        local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character.Humanoid.Health > 0 then
                 local headPos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
@@ -134,34 +113,10 @@ game:GetService("RunService").RenderStepped:Connect(function()
                         end
                     end
                 end
-                v.Character.Head.Size = Vector3.new(Settings.HitboxSize, Settings.HitboxSize, Settings.HitboxSize)
             end
         end
         if nearestEnemy then
             cam.CFrame = CFrame.new(cam.CFrame.Position, nearestEnemy.Character.Head.Position)
-        end
-    end
-
-    if Settings.ESP then
-        for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= lp and v.Character and v.Character:FindFirstChild("Head") then
-                local esp = v.Character.Head:FindFirstChild("MobileESP")
-                if not esp then
-                    local bill = Instance.new("BillboardGui", v.Character.Head)
-                    bill.Name = "MobileESP"
-                    bill.AlwaysOnTop = true
-                    bill.Size = UDim2.new(0, 100, 0, 50)
-                    local lbl = Instance.new("TextLabel", bill)
-                    lbl.Name = "Tag"
-                    lbl.Size = UDim2.new(1, 0, 1, 0)
-                    lbl.BackgroundTransparency = 1
-                    lbl.TextColor3 = Color3.fromRGB(255, 0, 0)
-                    lbl.TextSize = 14
-                    lbl.Font = Enum.Font.SourceSansBold
-                else
-                    esp.Tag.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. "]"
-                end
-            end
         end
     end
 end)

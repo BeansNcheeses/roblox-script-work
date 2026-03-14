@@ -7,7 +7,8 @@ local Settings = {
     FOV = 150,
     ShowFOV = true,
     HitboxSize = 2,
-    FlySpeed = 50
+    FlySpeed = 50,
+    NoClip = false
 }
 
 -- FLOATING TOGGLE
@@ -32,12 +33,12 @@ FOVCircle.Transparency = 0.7
 -- TABS
 local Combat = Window:NewTab("Combat")
 local Visuals = Window:NewTab("Visuals")
-local Player = Window:NewTab("Movement")
+local Movement = Window:NewTab("Movement")
 local Misc = Window:NewTab("Misc")
 
--- COMBAT (Everyon is a target)
-local AimSec = Combat:NewSection("Hardcore Aimbot")
-AimSec:NewToggle("Enable Aimbot (Visible Only)", "Locks onto ANYONE you see", function(state)
+-- COMBAT SECTION
+local AimSec = Combat:NewSection("Aimbot")
+AimSec:NewToggle("Enable Aimbot (Visible)", "Locks onto visible players", function(state)
     Settings.Aimbot = state
 end)
 
@@ -46,12 +47,12 @@ AimSec:NewSlider("Aimbot Range", "FOV Size", 800, 50, function(s)
 end)
 
 local HitSec = Combat:NewSection("Hitboxes")
-HitSec:NewSlider("Expand Hitboxes", "Make heads massive", 20, 2, function(s)
+HitSec:NewSlider("Head Size", "Expand enemy heads", 20, 2, function(s)
     Settings.HitboxSize = s
 end)
 
--- VISUALS
-local EspSec = Visuals:NewSection("Full ESP")
+-- VISUALS SECTION
+local EspSec = Visuals:NewSection("ESP")
 EspSec:NewToggle("Player Names & HP", "See everyone", function(state)
     Settings.ESP = state
     if not state then
@@ -63,13 +64,19 @@ EspSec:NewToggle("Player Names & HP", "See everyone", function(state)
     end
 end)
 
--- MOVEMENT
-local MoveSec = Player:NewSection("Speed & Fly")
+-- MOVEMENT SECTION (RE-CODED TO ENSURE IT SHOWS UP)
+local MoveSec = Movement:NewSection("Speed & Fly")
 MoveSec:NewSlider("WalkSpeed", "Go fast", 250, 16, function(s)
-    game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+    if game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid") then
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s
+    end
 end)
 
-MoveSec:NewButton("Fly (Mobile)", "Enables Fly script", function()
+MoveSec:NewToggle("NoClip", "Walk through walls", function(state)
+    Settings.NoClip = state
+end)
+
+MoveSec:NewButton("Fly (Mobile)", "Fly towards camera", function()
     local player = game.Players.LocalPlayer
     local char = player.Character
     local root = char.HumanoidRootPart
@@ -85,29 +92,30 @@ MoveSec:NewButton("Fly (Mobile)", "Enables Fly script", function()
     bv.velocity = Vector3.new(0,0.1,0)
     bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
     
-    spawn(function()
+    task.spawn(function()
         while flying do
-            wait()
+            task.wait()
             bv.velocity = camera.CFrame.LookVector * Settings.FlySpeed
             bg.cframe = camera.CFrame
         end
     end)
 end)
 
--- MISC
+-- MISC SECTION
 local MiscSec = Misc:NewSection("Utilities")
-MiscSec:NewButton("Infinite Jump", "Spam jump to fly", function()
-    game:GetService("UserInputService").JumpRequest:Connect(function()
-        game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
-    end)
+MiscSec:NewButton("Full Bright", "Removes shadows", function()
+    game:GetService("Lighting").Brightness = 2
+    game:GetService("Lighting").ClockTime = 14
+    game:GetService("Lighting").FogEnd = 100000
+    game:GetService("Lighting").GlobalShadows = false
 end)
 
-MiscSec:NewButton("Teleport to Random Player", "TP to a target", function()
-    local players = game.Players:GetPlayers()
-    local randomPlayer = players[math.random(1, #players)]
-    if randomPlayer ~= game.Players.LocalPlayer and randomPlayer.Character then
-        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = randomPlayer.Character.HumanoidRootPart.CFrame
-    end
+MiscSec:NewButton("Infinite Jump", "Jump in mid-air", function()
+    game:GetService("UserInputService").JumpRequest:Connect(function()
+        if game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid") then
+            game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+        end
+    end)
 end)
 
 -- WALL CHECK
@@ -131,6 +139,15 @@ game:GetService("RunService").RenderStepped:Connect(function()
     FOVCircle.Radius = Settings.FOV
     FOVCircle.Position = center
 
+    -- NoClip Logic
+    if Settings.NoClip and lp.Character then
+        for _, v in pairs(lp.Character:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.CanCollide = false
+            end
+        end
+    end
+
     if Settings.Aimbot and lp.Character then
         local nearestEnemy = nil
         local shortestDistance = math.huge
@@ -149,7 +166,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     end
                 end
                 
-                -- Hitbox Expander Logic
+                -- Hitbox
                 v.Character.Head.Size = Vector3.new(Settings.HitboxSize, Settings.HitboxSize, Settings.HitboxSize)
                 v.Character.Head.Transparency = 0.5
                 v.Character.Head.CanCollide = false
@@ -175,7 +192,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     lbl.BackgroundTransparency = 1
                     lbl.TextColor3 = Color3.fromRGB(255, 0, 0)
                     lbl.TextSize = 14
-                    lbl.Font = "SourceSansBold"
+                    lbl.Font = Enum.Font.SourceSansBold
                 else
                     esp.Tag.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. "]"
                 end

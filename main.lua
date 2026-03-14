@@ -1,5 +1,6 @@
--- Re-defining the Library and Window
 local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+-- We give the window a very specific name to track it
+local WindowName = "FlickChaosUI"
 local Window = Library.CreateLib("Flick Chaos Hub", "Midnight")
 
 local Settings = {
@@ -7,24 +8,33 @@ local Settings = {
     ESP = false,
     FOV = 150,
     ShowFOV = true,
-    NoClip = false
+    NoClip = false,
+    IsVisible = true
 }
 
--- 1. STABLE TOGGLE (Failsafe)
+-- 1. THE ULTIMATE TOGGLE
 local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 local OpenBtn = Instance.new("TextButton", ScreenGui)
-OpenBtn.Name = "FlickToggle"
+OpenBtn.Name = "FlickToggleBtn"
 OpenBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
 OpenBtn.Position = UDim2.new(0, 10, 0, 200)
 OpenBtn.Size = UDim2.new(0, 70, 0, 30)
 OpenBtn.Text = "TOGGLE"
 OpenBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 OpenBtn.Draggable = true
+OpenBtn.ZIndex = 10 -- Ensure it's above everything
 
 OpenBtn.MouseButton1Click:Connect(function()
-    local target = game:GetService("CoreGui"):FindFirstChild("Flick Chaos Hub")
-    if target then
-        target.Enabled = not target.Enabled
+    Settings.IsVisible = not Settings.IsVisible
+    
+    -- Library toggle
+    Library:ToggleUI()
+    
+    -- Manual CoreGui sweep to force-disable input
+    for _, v in pairs(game:GetService("CoreGui"):GetChildren()) do
+        if v:IsA("ScreenGui") and (v.Name == "Flick Chaos Hub" or v:FindFirstChild("Main")) then
+            v.Enabled = Settings.IsVisible
+        end
     end
 end)
 
@@ -40,7 +50,7 @@ FOVFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
 UIStroke.Color = Color3.fromRGB(255, 255, 255)
 UIStroke.Thickness = 2
 
--- 3. TABS (Ensuring they load in order)
+-- 3. TABS
 local Combat = Window:NewTab("Combat")
 local Visuals = Window:NewTab("Visuals")
 local Movement = Window:NewTab("Movement")
@@ -48,8 +58,8 @@ local Misc = Window:NewTab("Misc")
 
 -- COMBAT
 local AimSec = Combat:NewSection("Aimbot")
-AimSec:NewToggle("Enable Aimbot", "Locks onto visible", function(state) Settings.Aimbot = state end)
-AimSec:NewSlider("FOV Size", "Circle Radius", 500, 50, function(s) Settings.FOV = s end)
+AimSec:NewToggle("Enable Aimbot", "Visible Only", function(state) Settings.Aimbot = state end)
+AimSec:NewSlider("FOV Size", "Radius", 500, 50, function(s) Settings.FOV = s end)
 AimSec:NewToggle("Show FOV Circle", "Outline Visibility", function(state) Settings.ShowFOV = state end)
 
 -- VISUALS
@@ -58,14 +68,14 @@ EspSec:NewToggle("Names & HP ESP", "Billboard ESP", function(state) Settings.ESP
 
 -- MOVEMENT
 local MoveSec = Movement:NewSection("Movement")
-MoveSec:NewSlider("WalkSpeed", "Go fast", 250, 16, function(s)
+MoveSec:NewSlider("WalkSpeed", "Speed", 250, 16, function(s)
     if game.Players.LocalPlayer.Character then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = s end
 end)
 MoveSec:NewToggle("NoClip", "Walk through walls", function(state) Settings.NoClip = state end)
 
 -- MISC
 local MiscSec = Misc:NewSection("Misc Features")
-MiscSec:NewButton("Full Bright", "Lighting Fix", function()
+MiscSec:NewButton("Full Bright", "No Shadows", function()
     game:GetService("Lighting").Brightness = 2
     game:GetService("Lighting").ClockTime = 14
 end)
@@ -81,7 +91,7 @@ MiscSec:NewButton("Server Hop", "Join New Server", function()
     end
 end)
 
--- 4. CORE ENGINE
+-- 4. LOGIC ENGINE
 local function IsVisible(targetPart)
     local char = game.Players.LocalPlayer.Character
     local cam = workspace.CurrentCamera
@@ -133,16 +143,18 @@ game:GetService("RunService").RenderStepped:Connect(function()
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character:FindFirstChild("Head") then
                 local head = v.Character.Head
-                if not head:FindFirstChild("MobileESP") then
+                local esp = head:FindFirstChild("MobileESP")
+                if not esp then
                     local bill = Instance.new("BillboardGui", head)
                     bill.Name = "MobileESP"
                     bill.AlwaysOnTop = true
                     bill.Size = UDim2.new(0, 100, 0, 50)
                     local lbl = Instance.new("TextLabel", bill)
-                    lbl.Size = UDim2.new(1,0,1,0)
-                    lbl.BackgroundTransparency = 1
-                    lbl.TextColor3 = Color3.fromRGB(255, 0, 0)
-                    lbl.Text = v.Name
+                    lbl.Size = UDim2.new(1,0,1,0); lbl.BackgroundTransparency = 1
+                    lbl.TextColor3 = Color3.fromRGB(255, 0, 0); lbl.Font = "SourceSansBold"
+                    lbl.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. "]"
+                else
+                    esp.TextLabel.Text = v.Name .. " [" .. math.floor(v.Character.Humanoid.Health) .. "]"
                 end
             end
         end

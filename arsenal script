@@ -1,8 +1,8 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Arsenal Chaos Hub",
-   LoadingTitle = "Final Stability Patch",
+   Name = "Arsenal Chaos",
+   LoadingTitle = "Stability Patch",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {Enabled = false},
    KeySystem = false
@@ -16,13 +16,12 @@ local Settings = {
     ESP = false
 }
 
--- COMBAT TAB
-local Combat = Window:CreateTab("Combat", 4483362458)
+-- 1. COMBAT TAB
+local Combat = Window:CreateTab("Combat")
 
 Combat:CreateToggle({
    Name = "Enable Aimbot",
    CurrentValue = false,
-   Flag = "AimToggle",
    Callback = function(Value) Settings.Aimbot = Value end,
 })
 
@@ -31,73 +30,73 @@ Combat:CreateSlider({
    Range = {30, 500},
    Increment = 5,
    CurrentValue = 100,
-   Flag = "FOVSlider",
    Callback = function(Value) Settings.FOV = Value end,
 })
 
--- FIXED AMMO SECTION
-Combat:CreateSection("Weapon Mods")
-
 Combat:CreateButton({
-   Name = "Infinite Ammo & No Recoil",
+   Name = "Infinite Ammo / No Recoil",
    Callback = function()
        local count = 0
+       -- Deep scan for gun variables
        for _, v in pairs(getgc(true)) do
-           if type(v) == "table" and rawget(v, "Ammo") then
+           if type(v) == "table" and (rawget(v, "Ammo") or rawget(v, "Clip")) then
                v.Ammo = 999
+               v.Clip = 999
                v.MaxAmmo = 999
                v.Recoil = 0
                v.Spread = 0
                count = count + 1
            end
        end
-       Rayfield:Notify({Title = "Applied", Content = "Found " .. count .. " gun tables.", Duration = 3})
+       Rayfield:Notify({Title = "Success", Content = "Guns Modified!", Duration = 3})
    end,
 })
 
--- VISUALS TAB
-local Visuals = Window:NewTab("Visuals", 4483362458)
+-- 2. VISUALS TAB
+local Visuals = Window:CreateTab("Visuals")
 
 Visuals:CreateToggle({
-   Name = "Box ESP",
+   Name = "Enable Box ESP",
    CurrentValue = false,
-   Flag = "ESPToggle",
-   Callback = function(Value) 
-       Settings.ESP = Value 
-   end,
+   Callback = function(Value) Settings.ESP = Value end,
 })
 
 Visuals:CreateToggle({
    Name = "Show FOV Circle",
    CurrentValue = true,
-   Flag = "ShowFOV",
    Callback = function(Value) Settings.ShowFOV = Value end,
 })
 
--- MOVEMENT TAB
-local Movement = Window:CreateTab("Movement", 4483362458)
+-- 3. MOVEMENT TAB
+local Movement = Window:CreateTab("Movement")
+
 Movement:CreateSlider({
    Name = "WalkSpeed",
    Range = {16, 100},
    Increment = 1,
    CurrentValue = 16,
-   Callback = function(v) if game.Players.LocalPlayer.Character then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v end end,
+   Callback = function(Value)
+       if game.Players.LocalPlayer.Character then
+           game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+       end
+   end,
 })
 
--- FOV DRAWING
+-- FOV RENDERING
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 1
 FOVCircle.Color = Color3.fromRGB(255, 255, 255)
 FOVCircle.Filled = false
 
--- CORE LOOP
+-- MAIN LOOP
 game:GetService("RunService").RenderStepped:Connect(function()
     local cam = workspace.CurrentCamera
     local lp = game.Players.LocalPlayer
+    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
     
     FOVCircle.Visible = Settings.ShowFOV
     FOVCircle.Radius = Settings.FOV
-    FOVCircle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+    FOVCircle.Position = center
 
     -- Aimbot Logic
     if Settings.Aimbot and lp.Character then
@@ -108,7 +107,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
                 if Settings.TeamCheck and v.Team == lp.Team then continue end
                 local pos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
                 if onScreen then
-                    local mag = (Vector2.new(pos.X, pos.Y) - FOVCircle.Position).Magnitude
+                    local mag = (Vector2.new(pos.X, pos.Y) - center).Magnitude
                     if mag < Settings.FOV and mag < dist then
                         dist = mag
                         nearest = v
@@ -121,7 +120,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
         end
     end
 
-    -- Box ESP Logic (Using BillboardGui for Mobile Stability)
+    -- Simplified ESP
     if Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
@@ -136,14 +135,8 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     f.BackgroundTransparency = 1
                     local s = Instance.new("UIStroke", f)
                     s.Thickness = 2
-                    s.Color = (v.Team == lp.Team) and Color3.new(0,1,0) or Color3.new(1,0,0)
+                    s.Color = (v.Team == lp.Team) and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
                 end
-            end
-        end
-    else
-        for _, v in pairs(game.Players:GetPlayers()) do
-            if v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character.HumanoidRootPart:FindFirstChild("BoxESP") then
-                v.Character.HumanoidRootPart.BoxESP:Destroy()
             end
         end
     end

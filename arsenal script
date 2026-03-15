@@ -1,13 +1,13 @@
 local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/AZYsGithub/DrRay-UI-Library/main/DrRay.lua"))()
-
 local window = DrRayLibrary:Load("Arsenal Chaos", "Default")
 
--- Settings Variable
 getgenv().Settings = {
     Aimbot = false,
     TeamCheck = true,
+    VisibleOnly = true,
     ESP = false,
-    Speed = 16
+    FOV = 150,
+    ShowFOV = true
 }
 
 -- 1. COMBAT TAB
@@ -17,14 +17,27 @@ combatTab.newToggle("Enable Aimbot", "Locks onto players", false, function(state
     getgenv().Settings.Aimbot = state
 end)
 
-combatTab.newButton("Infinite Ammo & No Recoil", "Click once per life", function()
+combatTab.newToggle("Team Check", "Ignore Teammates", true, function(state)
+    getgenv().Settings.TeamCheck = state
+end)
+
+combatTab.newToggle("Visible Only", "Wall Check", true, function(state)
+    getgenv().Settings.VisibleOnly = state
+end)
+
+combatTab.newSlider("FOV Size", "Circle Radius", 500, false, function(val)
+    getgenv().Settings.FOV = val
+end)
+
+combatTab.newButton("Infinite Ammo & No Recoil", "Run once per match", function()
+    -- Arsenal Gun Mod logic
     for _, v in pairs(getgc(true)) do
-        if type(v) == "table" and (rawget(v, "Ammo") or rawget(v, "Clip")) then
+        if type(v) == "table" and rawget(v, "Ammo") then
             v.Ammo = 999
-            v.Clip = 999
             v.MaxAmmo = 999
             v.Recoil = 0
             v.Spread = 0
+            v.CurrentAmmo = 999
         end
     end
 end)
@@ -32,36 +45,70 @@ end)
 -- 2. VISUALS TAB
 local visualsTab = DrRayLibrary.newTab("Visuals", "rbxassetid://4483362458")
 
-visualsTab.newToggle("Box ESP", "See through walls", false, function(state)
+visualsTab.newToggle("Highlight ESP", "See through walls", false, function(state)
     getgenv().Settings.ESP = state
 end)
 
 -- 3. MOVEMENT TAB
 local moveTab = DrRayLibrary.newTab("Movement", "rbxassetid://4483362458")
-
-moveTab.newSlider("WalkSpeed", "Default is 16", 100, false, function(val)
+moveTab.newSlider("WalkSpeed", "Speed Hack", 100, false, function(val)
     if game.Players.LocalPlayer.Character then
         game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = val
     end
 end)
 
--- LOGIC ENGINE
+-- FOV CIRCLE DRAWING
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 2
+FOVCircle.Color = Color3.new(1, 1, 1)
+FOVCircle.Filled = false
+FOVCircle.Visible = true
+
+-- WALL CHECK FUNCTION
+local function IsPlayerVisible(target)
+    local char = game.Players.LocalPlayer.Character
+    local cam = workspace.CurrentCamera
+    local castPoints = {target.Position}
+    local ignoreList = {char, target.Parent}
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = ignoreList
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    
+    local result = workspace:Raycast(cam.CFrame.Position, target.Position - cam.CFrame.Position, params)
+    return result == nil
+end
+
+-- MAIN ENGINE
 game:GetService("RunService").RenderStepped:Connect(function()
     local lp = game.Players.LocalPlayer
     local cam = workspace.CurrentCamera
+    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
 
-    -- Aimbot (Simplified for mobile stability)
+    -- Update FOV Circle
+    FOVCircle.Radius = getgenv().Settings.FOV
+    FOVCircle.Position = center
+    FOVCircle.Visible = true
+
+    -- Aimbot Logic
     if getgenv().Settings.Aimbot then
         local nearest = nil
-        local lastDist = 200 -- Fixed FOV for stability
+        local shortestDist = getgenv().Settings.FOV
+
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character.Humanoid.Health > 0 then
-                if v.Team ~= lp.Team then
-                    local pos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
-                    if onScreen then
-                        local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)).Magnitude
-                        if dist < lastDist then
-                            lastDist = dist
+                if getgenv().Settings.TeamCheck and v.Team == lp.Team then continue end
+                
+                local pos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if dist < shortestDist then
+                        if getgenv().Settings.VisibleOnly then
+                            if IsPlayerVisible(v.Character.Head) then
+                                shortestDist = dist
+                                nearest = v
+                            end
+                        else
+                            shortestDist = dist
                             nearest = v
                         end
                     end
@@ -73,14 +120,13 @@ game:GetService("RunService").RenderStepped:Connect(function()
         end
     end
 
-    -- ESP (Using Highlights - the most stable visual)
+    -- ESP Logic
     if getgenv().Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
                 if not v.Character:FindFirstChild("Highlight") then
                     local h = Instance.new("Highlight", v.Character)
                     h.FillColor = (v.Team == lp.Team) and Color3.new(0,1,0) or Color3.new(1,0,0)
-                    h.OutlineColor = Color3.new(1,1,1)
                 end
             end
         end

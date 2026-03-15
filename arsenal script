@@ -1,14 +1,10 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Arsenal Chaos Hub | Rayfield",
-   LoadingTitle = "Gearing Up...",
+   Name = "Arsenal Chaos Hub",
+   LoadingTitle = "Final Stability Patch",
    LoadingSubtitle = "by Gemini",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "ArsenalChaos",
-      FileName = "MainConfig"
-   },
+   ConfigurationSaving = {Enabled = false},
    KeySystem = false
 })
 
@@ -17,8 +13,7 @@ local Settings = {
     TeamCheck = true,
     FOV = 100,
     ShowFOV = true,
-    ESP = false,
-    WalkSpeed = 16
+    ESP = false
 }
 
 -- COMBAT TAB
@@ -31,13 +26,6 @@ Combat:CreateToggle({
    Callback = function(Value) Settings.Aimbot = Value end,
 })
 
-Combat:CreateToggle({
-   Name = "Team Check",
-   CurrentValue = true,
-   Flag = "TeamToggle",
-   Callback = function(Value) Settings.TeamCheck = Value end,
-})
-
 Combat:CreateSlider({
    Name = "Aimbot FOV",
    Range = {30, 500},
@@ -47,41 +35,35 @@ Combat:CreateSlider({
    Callback = function(Value) Settings.FOV = Value end,
 })
 
+-- FIXED AMMO SECTION
 Combat:CreateSection("Weapon Mods")
 
 Combat:CreateButton({
    Name = "Infinite Ammo & No Recoil",
    Callback = function()
-       -- Arsenal Memory Sweep for Ammo/Recoil
+       local count = 0
        for _, v in pairs(getgc(true)) do
            if type(v) == "table" and rawget(v, "Ammo") then
                v.Ammo = 999
                v.MaxAmmo = 999
                v.Recoil = 0
                v.Spread = 0
+               count = count + 1
            end
        end
-       Rayfield:Notify({Title = "Mods Enabled", Content = "Infinite Ammo & No Recoil Active", Duration = 3})
+       Rayfield:Notify({Title = "Applied", Content = "Found " .. count .. " gun tables.", Duration = 3})
    end,
 })
 
 -- VISUALS TAB
-local Visuals = Window:CreateTab("Visuals", 4483362458)
+local Visuals = Window:NewTab("Visuals", 4483362458)
 
 Visuals:CreateToggle({
-   Name = "Wallhack (Highlight ESP)",
+   Name = "Box ESP",
    CurrentValue = false,
    Flag = "ESPToggle",
    Callback = function(Value) 
        Settings.ESP = Value 
-       if not Value then
-           -- Clean up ESP when toggled off
-           for _, p in pairs(game.Players:GetPlayers()) do
-               if p.Character and p.Character:FindFirstChild("Highlight") then
-                   p.Character.Highlight:Destroy()
-               end
-           end
-       end
    end,
 })
 
@@ -95,60 +77,41 @@ Visuals:CreateToggle({
 -- MOVEMENT TAB
 local Movement = Window:CreateTab("Movement", 4483362458)
 Movement:CreateSlider({
-   Name = "Speed Hack",
+   Name = "WalkSpeed",
    Range = {16, 100},
    Increment = 1,
    CurrentValue = 16,
-   Flag = "SpeedSlider",
-   Callback = function(Value)
-       if game.Players.LocalPlayer.Character then
-           game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
-       end
-   end,
+   Callback = function(v) if game.Players.LocalPlayer.Character then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = v end end,
 })
 
--- CORE LOGIC
+-- FOV DRAWING
 local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1.5
+FOVCircle.Thickness = 1
 FOVCircle.Color = Color3.fromRGB(255, 255, 255)
 FOVCircle.Filled = false
 
-local function IsVisible(targetPart)
-    local char = game.Players.LocalPlayer.Character
-    local cam = workspace.CurrentCamera
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {char, targetPart.Parent}
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    local result = workspace:Raycast(cam.CFrame.Position, targetPart.Position - cam.CFrame.Position, params)
-    return result == nil
-end
-
+-- CORE LOOP
 game:GetService("RunService").RenderStepped:Connect(function()
     local cam = workspace.CurrentCamera
     local lp = game.Players.LocalPlayer
-    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
     
     FOVCircle.Visible = Settings.ShowFOV
     FOVCircle.Radius = Settings.FOV
-    FOVCircle.Position = center
+    FOVCircle.Position = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
 
-    -- AIMBOT LOGIC
+    -- Aimbot Logic
     if Settings.Aimbot and lp.Character then
         local nearest = nil
-        local shortestDist = math.huge
-
+        local dist = math.huge
         for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character.Humanoid.Health > 0 then
+            if v ~= lp and v.Character and v.Character:FindFirstChild("Head") then
                 if Settings.TeamCheck and v.Team == lp.Team then continue end
-
                 local pos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
                 if onScreen then
-                    local screenDist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                    if screenDist < Settings.FOV and screenDist < shortestDist then
-                        if IsVisible(v.Character.Head) then
-                            shortestDist = screenDist
-                            nearest = v
-                        end
+                    local mag = (Vector2.new(pos.X, pos.Y) - FOVCircle.Position).Magnitude
+                    if mag < Settings.FOV and mag < dist then
+                        dist = mag
+                        nearest = v
                     end
                 end
             end
@@ -158,17 +121,29 @@ game:GetService("RunService").RenderStepped:Connect(function()
         end
     end
 
-    -- HIGHLIGHT ESP LOGIC (Fixed for Arsenal)
+    -- Box ESP Logic (Using BillboardGui for Mobile Stability)
     if Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
-                if not v.Character:FindFirstChild("Highlight") then
-                    local hi = Instance.new("Highlight", v.Character)
-                    hi.OutlineTransparency = 0
-                    hi.FillTransparency = 0.5
-                    -- Red for enemies, Green for team
-                    hi.FillColor = (v.Team == lp.Team) and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
+            if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                local hrp = v.Character.HumanoidRootPart
+                if not hrp:FindFirstChild("BoxESP") then
+                    local b = Instance.new("BillboardGui", hrp)
+                    b.Name = "BoxESP"
+                    b.AlwaysOnTop = true
+                    b.Size = UDim2.new(4, 0, 5, 0)
+                    local f = Instance.new("Frame", b)
+                    f.Size = UDim2.new(1, 0, 1, 0)
+                    f.BackgroundTransparency = 1
+                    local s = Instance.new("UIStroke", f)
+                    s.Thickness = 2
+                    s.Color = (v.Team == lp.Team) and Color3.new(0,1,0) or Color3.new(1,0,0)
                 end
+            end
+        end
+    else
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character.HumanoidRootPart:FindFirstChild("BoxESP") then
+                v.Character.HumanoidRootPart.BoxESP:Destroy()
             end
         end
     end

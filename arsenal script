@@ -1,116 +1,69 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/AZYsGithub/DrRay-UI-Library/main/DrRay.lua"))()
 
-local Window = Rayfield:CreateWindow({
-   Name = "Arsenal Chaos",
-   LoadingTitle = "Stability Patch",
-   LoadingSubtitle = "by Gemini",
-   ConfigurationSaving = {Enabled = false},
-   KeySystem = false
-})
+local window = DrRayLibrary:Load("Arsenal Chaos", "Default")
 
-local Settings = {
+-- Settings Variable
+getgenv().Settings = {
     Aimbot = false,
     TeamCheck = true,
-    FOV = 100,
-    ShowFOV = true,
-    ESP = false
+    ESP = false,
+    Speed = 16
 }
 
 -- 1. COMBAT TAB
-local Combat = Window:CreateTab("Combat")
+local combatTab = DrRayLibrary.newTab("Combat", "rbxassetid://4483362458")
 
-Combat:CreateToggle({
-   Name = "Enable Aimbot",
-   CurrentValue = false,
-   Callback = function(Value) Settings.Aimbot = Value end,
-})
+combatTab.newToggle("Enable Aimbot", "Locks onto players", false, function(state)
+    getgenv().Settings.Aimbot = state
+end)
 
-Combat:CreateSlider({
-   Name = "Aimbot FOV",
-   Range = {30, 500},
-   Increment = 5,
-   CurrentValue = 100,
-   Callback = function(Value) Settings.FOV = Value end,
-})
-
-Combat:CreateButton({
-   Name = "Infinite Ammo / No Recoil",
-   Callback = function()
-       local count = 0
-       -- Deep scan for gun variables
-       for _, v in pairs(getgc(true)) do
-           if type(v) == "table" and (rawget(v, "Ammo") or rawget(v, "Clip")) then
-               v.Ammo = 999
-               v.Clip = 999
-               v.MaxAmmo = 999
-               v.Recoil = 0
-               v.Spread = 0
-               count = count + 1
-           end
-       end
-       Rayfield:Notify({Title = "Success", Content = "Guns Modified!", Duration = 3})
-   end,
-})
+combatTab.newButton("Infinite Ammo & No Recoil", "Click once per life", function()
+    for _, v in pairs(getgc(true)) do
+        if type(v) == "table" and (rawget(v, "Ammo") or rawget(v, "Clip")) then
+            v.Ammo = 999
+            v.Clip = 999
+            v.MaxAmmo = 999
+            v.Recoil = 0
+            v.Spread = 0
+        end
+    end
+end)
 
 -- 2. VISUALS TAB
-local Visuals = Window:CreateTab("Visuals")
+local visualsTab = DrRayLibrary.newTab("Visuals", "rbxassetid://4483362458")
 
-Visuals:CreateToggle({
-   Name = "Enable Box ESP",
-   CurrentValue = false,
-   Callback = function(Value) Settings.ESP = Value end,
-})
-
-Visuals:CreateToggle({
-   Name = "Show FOV Circle",
-   CurrentValue = true,
-   Callback = function(Value) Settings.ShowFOV = Value end,
-})
+visualsTab.newToggle("Box ESP", "See through walls", false, function(state)
+    getgenv().Settings.ESP = state
+end)
 
 -- 3. MOVEMENT TAB
-local Movement = Window:CreateTab("Movement")
+local moveTab = DrRayLibrary.newTab("Movement", "rbxassetid://4483362458")
 
-Movement:CreateSlider({
-   Name = "WalkSpeed",
-   Range = {16, 100},
-   Increment = 1,
-   CurrentValue = 16,
-   Callback = function(Value)
-       if game.Players.LocalPlayer.Character then
-           game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
-       end
-   end,
-})
+moveTab.newSlider("WalkSpeed", "Default is 16", 100, false, function(val)
+    if game.Players.LocalPlayer.Character then
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = val
+    end
+end)
 
--- FOV RENDERING
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1
-FOVCircle.Color = Color3.fromRGB(255, 255, 255)
-FOVCircle.Filled = false
-
--- MAIN LOOP
+-- LOGIC ENGINE
 game:GetService("RunService").RenderStepped:Connect(function()
-    local cam = workspace.CurrentCamera
     local lp = game.Players.LocalPlayer
-    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
-    
-    FOVCircle.Visible = Settings.ShowFOV
-    FOVCircle.Radius = Settings.FOV
-    FOVCircle.Position = center
+    local cam = workspace.CurrentCamera
 
-    -- Aimbot Logic
-    if Settings.Aimbot and lp.Character then
+    -- Aimbot (Simplified for mobile stability)
+    if getgenv().Settings.Aimbot then
         local nearest = nil
-        local dist = math.huge
+        local lastDist = 200 -- Fixed FOV for stability
         for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= lp and v.Character and v.Character:FindFirstChild("Head") then
-                if Settings.TeamCheck and v.Team == lp.Team then continue end
-                local pos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
-                if onScreen then
-                    local mag = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                    if mag < Settings.FOV and mag < dist then
-                        dist = mag
-                        nearest = v
+            if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character.Humanoid.Health > 0 then
+                if v.Team ~= lp.Team then
+                    local pos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
+                    if onScreen then
+                        local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)).Magnitude
+                        if dist < lastDist then
+                            lastDist = dist
+                            nearest = v
+                        end
                     end
                 end
             end
@@ -120,22 +73,14 @@ game:GetService("RunService").RenderStepped:Connect(function()
         end
     end
 
-    -- Simplified ESP
-    if Settings.ESP then
+    -- ESP (Using Highlights - the most stable visual)
+    if getgenv().Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                local hrp = v.Character.HumanoidRootPart
-                if not hrp:FindFirstChild("BoxESP") then
-                    local b = Instance.new("BillboardGui", hrp)
-                    b.Name = "BoxESP"
-                    b.AlwaysOnTop = true
-                    b.Size = UDim2.new(4, 0, 5, 0)
-                    local f = Instance.new("Frame", b)
-                    f.Size = UDim2.new(1, 0, 1, 0)
-                    f.BackgroundTransparency = 1
-                    local s = Instance.new("UIStroke", f)
-                    s.Thickness = 2
-                    s.Color = (v.Team == lp.Team) and Color3.new(0, 1, 0) or Color3.new(1, 0, 0)
+            if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
+                if not v.Character:FindFirstChild("Highlight") then
+                    local h = Instance.new("Highlight", v.Character)
+                    h.FillColor = (v.Team == lp.Team) and Color3.new(0,1,0) or Color3.new(1,0,0)
+                    h.OutlineColor = Color3.new(1,1,1)
                 end
             end
         end

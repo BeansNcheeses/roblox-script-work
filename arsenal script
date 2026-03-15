@@ -7,30 +7,29 @@ local Settings = {
     VisibleOnly = true,
     ESP = false,
     FOV = 150,
-    Speed = 16
 }
 
--- 1. THE MAIN INTERFACE (Custom made for stability)
+-- 1. THE MAIN INTERFACE
 local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ChaosHub"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 350, 0, 250)
-Main.Position = UDim2.new(0.5, -175, 0.5, -125)
+Main.Size = UDim2.new(0, 350, 0, 330) -- Increased size for slider
+Main.Position = UDim2.new(0.5, -175, 0.5, -165)
 Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Main.Active = true
 Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "ARSENAL CHAOS HUB"
+Title.Text = "ARSENAL CHAOS HUB v3"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
 
--- 2. TOGGLE BUTTONS (The "Core" Features)
+-- 2. TOGGLE SYSTEM
 local function CreateToggle(name, pos, settingName)
     local btn = Instance.new("TextButton", Main)
-    btn.Size = UDim2.new(0, 150, 0, 30)
+    btn.Size = UDim2.new(0, 150, 0, 35)
     btn.Position = pos
     btn.Text = name .. ": OFF"
     btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
@@ -44,30 +43,71 @@ local function CreateToggle(name, pos, settingName)
 end
 
 CreateToggle("Aimbot", UDim2.new(0, 10, 0, 40), "Aimbot")
-CreateToggle("Team Check", UDim2.new(0, 10, 0, 80), "TeamCheck")
-CreateToggle("Wall Check", UDim2.new(0, 10, 0, 120), "VisibleOnly")
-CreateToggle("ESP", UDim2.new(0, 10, 0, 160), "ESP")
+CreateToggle("Team Check", UDim2.new(0, 10, 0, 85), "TeamCheck")
+CreateToggle("Visible Only", UDim2.new(0, 10, 0, 130), "VisibleOnly")
+CreateToggle("Highlight ESP", UDim2.new(0, 10, 0, 175), "ESP")
 
--- 3. INFINITE AMMO BUTTON
+-- 3. FOV SLIDER
+local SliderLabel = Instance.new("TextLabel", Main)
+SliderLabel.Size = UDim2.new(0, 150, 0, 20)
+SliderLabel.Position = UDim2.new(0, 10, 0, 220)
+SliderLabel.Text = "FOV SIZE: " .. Settings.FOV
+SliderLabel.TextColor3 = Color3.new(1,1,1)
+SliderLabel.BackgroundTransparency = 1
+
+local SliderBack = Instance.new("Frame", Main)
+SliderBack.Size = UDim2.new(0, 330, 0, 10)
+SliderBack.Position = UDim2.new(0, 10, 0, 245)
+SliderBack.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+
+local SliderBtn = Instance.new("TextButton", SliderBack)
+SliderBtn.Size = UDim2.new(0, 20, 0, 20)
+SliderBtn.Position = UDim2.new(0, (Settings.FOV / 800) * 310, 0, -5)
+SliderBtn.Text = ""
+SliderBtn.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+
+SliderBtn.MouseButton1Down:Connect(function()
+    local move = game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+            local relativeX = input.Position.X - SliderBack.AbsolutePosition.X
+            local percent = math.clamp(relativeX / SliderBack.AbsoluteSize.X, 0, 1)
+            SliderBtn.Position = UDim2.new(percent, -10, 0, -5)
+            Settings.FOV = math.floor(percent * 800)
+            SliderLabel.Text = "FOV SIZE: " .. Settings.FOV
+        end
+    end)
+    game:GetService("UserInputService").InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            move:Disconnect()
+        end
+    end)
+end)
+
+-- 4. RAPID FIRE / INF AMMO BUTTON
 local AmmoBtn = Instance.new("TextButton", Main)
-AmmoBtn.Size = UDim2.new(0, 150, 0, 30)
+AmmoBtn.Size = UDim2.new(0, 150, 0, 170)
 AmmoBtn.Position = UDim2.new(0, 180, 0, 40)
-AmmoBtn.Text = "MOD WEAPON"
+AmmoBtn.Text = "MOD WEAPON\n(Million Bullets + No Reload)"
 AmmoBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 200)
 AmmoBtn.TextColor3 = Color3.new(1,1,1)
+AmmoBtn.TextWrapped = true
 
 AmmoBtn.MouseButton1Click:Connect(function()
     for _, v in pairs(getgc(true)) do
         if type(v) == "table" and (rawget(v, "Ammo") or rawget(v, "Clip")) then
-            v.Ammo = 999
-            v.Clip = 999
+            v.Ammo = 999999
+            v.Clip = 999999
+            v.FireRate = 0.001 -- Max Speed
+            v.ReloadTime = 0
             v.Recoil = 0
             v.Spread = 0
+            v.MaxSpread = 0
+            if rawget(v, "Auto") ~= nil then v.Auto = true end
         end
     end
 end)
 
--- 4. FOV CIRCLE (Basic UI Frame for Mobile)
+-- 5. FOV CIRCLE VISUAL
 local FOVFrame = Instance.new("Frame", ScreenGui)
 FOVFrame.AnchorPoint = Vector2.new(0.5, 0.5)
 FOVFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
@@ -78,7 +118,7 @@ Stroke.Thickness = 2
 local Corner = Instance.new("UICorner", FOVFrame)
 Corner.CornerRadius = UDim.new(1, 0)
 
--- 5. LOGIC ENGINE
+-- 6. LOGIC ENGINE
 local function IsVisible(part)
     local cam = workspace.CurrentCamera
     local ray = RaycastParams.new()

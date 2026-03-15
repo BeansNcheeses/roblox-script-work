@@ -7,6 +7,7 @@ local Settings = {
     VisibleOnly = true,
     ESP = false,
     FOV = 150,
+    InfAmmo = false
 }
 
 -- 1. THE MAIN INTERFACE
@@ -14,17 +15,29 @@ local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
 ScreenGui.Name = "ChaosHub"
 
 local Main = Instance.new("Frame", ScreenGui)
-Main.Size = UDim2.new(0, 350, 0, 330) -- Increased size for slider
-Main.Position = UDim2.new(0.5, -175, 0.5, -165)
+Main.Size = UDim2.new(0, 350, 0, 360)
+Main.Position = UDim2.new(0.5, -175, 0.5, -180)
 Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Main.Active = true
 Main.Draggable = true
 
 local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, 0, 0, 30)
-Title.Text = "ARSENAL CHAOS HUB v3"
+Title.Size = UDim2.new(1, -30, 0, 30)
+Title.Text = "ARSENAL CHAOS HUB v4"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
+
+-- CLOSE / MINIMIZE BUTTON
+local CloseBtn = Instance.new("TextButton", Main)
+CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+CloseBtn.Position = UDim2.new(1, -30, 0, 0)
+CloseBtn.Text = "_"
+CloseBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+CloseBtn.TextColor3 = Color3.new(1,1,1)
+
+CloseBtn.MouseButton1Click:Connect(function()
+    Main.Visible = not Main.Visible
+end)
 
 -- 2. TOGGLE SYSTEM
 local function CreateToggle(name, pos, settingName)
@@ -83,25 +96,23 @@ SliderBtn.MouseButton1Down:Connect(function()
     end)
 end)
 
--- 4. RAPID FIRE / INF AMMO BUTTON
+-- 4. MILLION BULLETS / NO RELOAD BUTTON
 local AmmoBtn = Instance.new("TextButton", Main)
 AmmoBtn.Size = UDim2.new(0, 150, 0, 170)
 AmmoBtn.Position = UDim2.new(0, 180, 0, 40)
-AmmoBtn.Text = "MOD WEAPON\n(Million Bullets + No Reload)"
+AmmoBtn.Text = "ACTIVATE WEAPON GOD MODE\n(No Reload + Rapid Fire)"
 AmmoBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 200)
 AmmoBtn.TextColor3 = Color3.new(1,1,1)
 AmmoBtn.TextWrapped = true
 
 AmmoBtn.MouseButton1Click:Connect(function()
+    Settings.InfAmmo = true
     for _, v in pairs(getgc(true)) do
         if type(v) == "table" and (rawget(v, "Ammo") or rawget(v, "Clip")) then
-            v.Ammo = 999999
-            v.Clip = 999999
-            v.FireRate = 0.001 -- Max Speed
+            v.FireRate = 0.001
             v.ReloadTime = 0
             v.Recoil = 0
             v.Spread = 0
-            v.MaxSpread = 0
             if rawget(v, "Auto") ~= nil then v.Auto = true end
         end
     end
@@ -134,6 +145,15 @@ game:GetService("RunService").RenderStepped:Connect(function()
     
     FOVFrame.Size = UDim2.new(0, Settings.FOV * 2, 0, Settings.FOV * 2)
     
+    -- CONSTANT NO RELOAD CHECK
+    if Settings.InfAmmo then
+        for _, v in pairs(getgc(true)) do
+            if type(v) == "table" and rawget(v, "Ammo") then
+                v.Ammo = 999
+            end
+        end
+    end
+
     if Settings.Aimbot then
         local nearest = nil
         local lastDist = Settings.FOV

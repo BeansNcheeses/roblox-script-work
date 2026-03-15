@@ -1,114 +1,112 @@
-local DrRayLibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/AZYsGithub/DrRay-UI-Library/main/DrRay.lua"))()
-local window = DrRayLibrary:Load("Arsenal Chaos", "Default")
+-- Destroy existing UI if re-running
+if game.CoreGui:FindFirstChild("ChaosHub") then game.CoreGui.ChaosHub:Destroy() end
 
-getgenv().Settings = {
+local Settings = {
     Aimbot = false,
     TeamCheck = true,
     VisibleOnly = true,
     ESP = false,
     FOV = 150,
-    ShowFOV = true
+    Speed = 16
 }
 
--- 1. COMBAT TAB
-local combatTab = DrRayLibrary.newTab("Combat", "rbxassetid://4483362458")
+-- 1. THE MAIN INTERFACE (Custom made for stability)
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+ScreenGui.Name = "ChaosHub"
 
-combatTab.newToggle("Enable Aimbot", "Locks onto players", false, function(state)
-    getgenv().Settings.Aimbot = state
-end)
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 350, 0, 250)
+Main.Position = UDim2.new(0.5, -175, 0.5, -125)
+Main.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Main.Active = true
+Main.Draggable = true
 
-combatTab.newToggle("Team Check", "Ignore Teammates", true, function(state)
-    getgenv().Settings.TeamCheck = state
-end)
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "ARSENAL CHAOS HUB"
+Title.TextColor3 = Color3.new(1,1,1)
+Title.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
 
-combatTab.newToggle("Visible Only", "Wall Check", true, function(state)
-    getgenv().Settings.VisibleOnly = state
-end)
+-- 2. TOGGLE BUTTONS (The "Core" Features)
+local function CreateToggle(name, pos, settingName)
+    local btn = Instance.new("TextButton", Main)
+    btn.Size = UDim2.new(0, 150, 0, 30)
+    btn.Position = pos
+    btn.Text = name .. ": OFF"
+    btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    btn.TextColor3 = Color3.new(1,1,1)
+    
+    btn.MouseButton1Click:Connect(function()
+        Settings[settingName] = not Settings[settingName]
+        btn.Text = name .. (Settings[settingName] and ": ON" or ": OFF")
+        btn.BackgroundColor3 = Settings[settingName] and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(50, 50, 50)
+    end)
+end
 
-combatTab.newSlider("FOV Size", "Circle Radius", 500, false, function(val)
-    getgenv().Settings.FOV = val
-end)
+CreateToggle("Aimbot", UDim2.new(0, 10, 0, 40), "Aimbot")
+CreateToggle("Team Check", UDim2.new(0, 10, 0, 80), "TeamCheck")
+CreateToggle("Wall Check", UDim2.new(0, 10, 0, 120), "VisibleOnly")
+CreateToggle("ESP", UDim2.new(0, 10, 0, 160), "ESP")
 
-combatTab.newButton("Infinite Ammo & No Recoil", "Run once per match", function()
-    -- Arsenal Gun Mod logic
+-- 3. INFINITE AMMO BUTTON
+local AmmoBtn = Instance.new("TextButton", Main)
+AmmoBtn.Size = UDim2.new(0, 150, 0, 30)
+AmmoBtn.Position = UDim2.new(0, 180, 0, 40)
+AmmoBtn.Text = "MOD WEAPON"
+AmmoBtn.BackgroundColor3 = Color3.fromRGB(100, 0, 200)
+AmmoBtn.TextColor3 = Color3.new(1,1,1)
+
+AmmoBtn.MouseButton1Click:Connect(function()
     for _, v in pairs(getgc(true)) do
-        if type(v) == "table" and rawget(v, "Ammo") then
+        if type(v) == "table" and (rawget(v, "Ammo") or rawget(v, "Clip")) then
             v.Ammo = 999
-            v.MaxAmmo = 999
+            v.Clip = 999
             v.Recoil = 0
             v.Spread = 0
-            v.CurrentAmmo = 999
         end
     end
 end)
 
--- 2. VISUALS TAB
-local visualsTab = DrRayLibrary.newTab("Visuals", "rbxassetid://4483362458")
+-- 4. FOV CIRCLE (Basic UI Frame for Mobile)
+local FOVFrame = Instance.new("Frame", ScreenGui)
+FOVFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+FOVFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+FOVFrame.BackgroundTransparency = 1
+local Stroke = Instance.new("UIStroke", FOVFrame)
+Stroke.Color = Color3.new(1,1,1)
+Stroke.Thickness = 2
+local Corner = Instance.new("UICorner", FOVFrame)
+Corner.CornerRadius = UDim.new(1, 0)
 
-visualsTab.newToggle("Highlight ESP", "See through walls", false, function(state)
-    getgenv().Settings.ESP = state
-end)
-
--- 3. MOVEMENT TAB
-local moveTab = DrRayLibrary.newTab("Movement", "rbxassetid://4483362458")
-moveTab.newSlider("WalkSpeed", "Speed Hack", 100, false, function(val)
-    if game.Players.LocalPlayer.Character then
-        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = val
-    end
-end)
-
--- FOV CIRCLE DRAWING
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 2
-FOVCircle.Color = Color3.new(1, 1, 1)
-FOVCircle.Filled = false
-FOVCircle.Visible = true
-
--- WALL CHECK FUNCTION
-local function IsPlayerVisible(target)
-    local char = game.Players.LocalPlayer.Character
+-- 5. LOGIC ENGINE
+local function IsVisible(part)
     local cam = workspace.CurrentCamera
-    local castPoints = {target.Position}
-    local ignoreList = {char, target.Parent}
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = ignoreList
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    
-    local result = workspace:Raycast(cam.CFrame.Position, target.Position - cam.CFrame.Position, params)
+    local ray = RaycastParams.new()
+    ray.FilterDescendantsInstances = {game.Players.LocalPlayer.Character, part.Parent}
+    ray.FilterType = Enum.RaycastFilterType.Exclude
+    local result = workspace:Raycast(cam.CFrame.Position, part.Position - cam.CFrame.Position, ray)
     return result == nil
 end
 
--- MAIN ENGINE
 game:GetService("RunService").RenderStepped:Connect(function()
-    local lp = game.Players.LocalPlayer
     local cam = workspace.CurrentCamera
-    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
-
-    -- Update FOV Circle
-    FOVCircle.Radius = getgenv().Settings.FOV
-    FOVCircle.Position = center
-    FOVCircle.Visible = true
-
-    -- Aimbot Logic
-    if getgenv().Settings.Aimbot then
+    local lp = game.Players.LocalPlayer
+    
+    FOVFrame.Size = UDim2.new(0, Settings.FOV * 2, 0, Settings.FOV * 2)
+    
+    if Settings.Aimbot then
         local nearest = nil
-        local shortestDist = getgenv().Settings.FOV
-
+        local lastDist = Settings.FOV
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character.Humanoid.Health > 0 then
-                if getgenv().Settings.TeamCheck and v.Team == lp.Team then continue end
+                if Settings.TeamCheck and v.Team == lp.Team then continue end
                 
                 local pos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
                 if onScreen then
-                    local dist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
-                    if dist < shortestDist then
-                        if getgenv().Settings.VisibleOnly then
-                            if IsPlayerVisible(v.Character.Head) then
-                                shortestDist = dist
-                                nearest = v
-                            end
-                        else
-                            shortestDist = dist
+                    local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)).Magnitude
+                    if dist < lastDist then
+                        if not Settings.VisibleOnly or IsVisible(v.Character.Head) then
+                            lastDist = dist
                             nearest = v
                         end
                     end
@@ -120,8 +118,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
         end
     end
 
-    -- ESP Logic
-    if getgenv().Settings.ESP then
+    if Settings.ESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
                 if not v.Character:FindFirstChild("Highlight") then

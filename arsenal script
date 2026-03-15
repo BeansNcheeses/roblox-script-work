@@ -1,0 +1,151 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Arsenal Chaos Hub",
+   LoadingTitle = "Initializing...",
+   LoadingSubtitle = "by Gemini",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "ArsenalChaos",
+      FileName = "MainConfig"
+   },
+   KeySystem = false
+})
+
+local Settings = {
+    Aimbot = false,
+    TeamCheck = true,
+    FOV = 100,
+    ShowFOV = true,
+    ESP = false,
+    NoRecoil = false,
+    WalkSpeed = 16
+}
+
+-- COMBAT TAB
+local Combat = Window:CreateTab("Combat", 4483362458)
+local AimSection = Combat:CreateSection("Aimbot Settings")
+
+Combat:CreateToggle({
+   Name = "Enable Aimbot",
+   CurrentValue = false,
+   Flag = "AimToggle",
+   Callback = function(Value) Settings.Aimbot = Value end,
+})
+
+Combat:CreateToggle({
+   Name = "Team Check",
+   CurrentValue = true,
+   Flag = "TeamToggle",
+   Callback = function(Value) Settings.TeamCheck = Value end,
+})
+
+Combat:CreateSlider({
+   Name = "Aimbot FOV",
+   Range = {30, 500},
+   Increment = 5,
+   Suffix = "Radius",
+   CurrentValue = 100,
+   Flag = "FOVSlider",
+   Callback = function(Value) Settings.FOV = Value end,
+})
+
+local GunSection = Combat:CreateSection("Weapon Mods")
+
+Combat:CreateButton({
+   Name = "No Recoil / No Spread",
+   Callback = function()
+       -- Arsenal specific recoil modification
+       for _, v in pairs(getgc(true)) do
+           if type(v) == "table" and rawget(v, "Recoil") then
+               v.Recoil = 0
+               v.Spread = 0
+               v.MaxSpread = 0
+           end
+       end
+       Rayfield:Notify({Title = "Success", Content = "Recoil & Spread Removed", Duration = 3})
+   end,
+})
+
+-- VISUALS TAB
+local Visuals = Window:CreateTab("Visuals", 4483362458)
+Visuals:CreateToggle({
+   Name = "Player ESP (Names)",
+   CurrentValue = false,
+   Flag = "ESPToggle",
+   Callback = function(Value) Settings.ESP = Value end,
+})
+
+Visuals:CreateToggle({
+   Name = "Show FOV Circle",
+   CurrentValue = true,
+   Flag = "ShowFOV",
+   Callback = function(Value) Settings.ShowFOV = Value end,
+})
+
+-- MOVEMENT TAB
+local Movement = Window:CreateTab("Movement", 4483362458)
+Movement:CreateSlider({
+   Name = "Speed Hack",
+   Range = {16, 150},
+   Increment = 1,
+   Suffix = "Studs",
+   CurrentValue = 16,
+   Flag = "SpeedSlider",
+   Callback = function(Value)
+       if game.Players.LocalPlayer.Character then
+           game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+       end
+   end,
+})
+
+-- CORE LOGIC
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Filled = false
+
+local function IsVisible(targetPart)
+    local char = game.Players.LocalPlayer.Character
+    local cam = workspace.CurrentCamera
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {char, targetPart.Parent}
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local result = workspace:Raycast(cam.CFrame.Position, targetPart.Position - cam.CFrame.Position, params)
+    return result == nil
+end
+
+game:GetService("RunService").RenderStepped:Connect(function()
+    local cam = workspace.CurrentCamera
+    local lp = game.Players.LocalPlayer
+    local center = Vector2.new(cam.ViewportSize.X/2, cam.ViewportSize.Y/2)
+    
+    FOVCircle.Visible = Settings.ShowFOV
+    FOVCircle.Radius = Settings.FOV
+    FOVCircle.Position = center
+
+    if Settings.Aimbot and lp.Character then
+        local nearest = nil
+        local shortestDist = math.huge
+
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= lp and v.Character and v.Character:FindFirstChild("Head") and v.Character.Humanoid.Health > 0 then
+                if Settings.TeamCheck and v.Team == lp.Team then continue end
+
+                local pos, onScreen = cam:WorldToScreenPoint(v.Character.Head.Position)
+                if onScreen then
+                    local screenDist = (Vector2.new(pos.X, pos.Y) - center).Magnitude
+                    if screenDist < Settings.FOV and screenDist < shortestDist then
+                        if IsVisible(v.Character.Head) then
+                            shortestDist = screenDist
+                            nearest = v
+                        end
+                    end
+                end
+            end
+        end
+        if nearest then
+            cam.CFrame = CFrame.new(cam.CFrame.Position, nearest.Character.Head.Position)
+        end
+    end
+end)

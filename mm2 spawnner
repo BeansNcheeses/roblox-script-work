@@ -57,6 +57,48 @@ VisualTab:CreateButton({
    end,
 })
 
+-- Add this right under your VisualTab creation in the script
+
+local SkinToSpawn = ""
+
+VisualTab:CreateSection("Custom Visual Spawner")
+
+VisualTab:CreateInput({
+   Name = "Target Skin Name",
+   PlaceholderText = "e.g. Chroma Fang, Luger",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+       SkinToSpawn = Text
+   end,
+})
+
+VisualTab:CreateButton({
+   Name = "Spawn Specific Skin in Hand",
+   Callback = function()
+       if SkinToSpawn == "" then
+           Rayfield:Notify({Title = "Error", Content = "Please enter a skin name first.", Duration = 3})
+           return
+       end
+
+       local lp = game.Players.LocalPlayer
+       -- Deep search through ReplicatedStorage for the exact name
+       local source = game:GetService("ReplicatedStorage"):FindFirstChild(SkinToSpawn, true)
+
+       if source and (source:IsA("Tool") or source:IsA("Model")) and lp.Character then
+           local clone = source:Clone()
+           clone.Parent = lp.Character
+           
+           -- Force equip if it's a tool
+           if clone:IsA("Tool") then
+               lp.Character.Humanoid:EquipTool(clone)
+           end
+           Rayfield:Notify({Title = "Success", Content = "Equipped visual " .. SkinToSpawn, Duration = 3})
+       else
+           Rayfield:Notify({Title = "Failed", Content = "Could not find " .. SkinToSpawn .. " in game files. Check spelling.", Duration = 4})
+       end
+   end,
+})
+
 -- MOVEMENT TAB
 local MoveTab = Window:CreateTab("Movement", 4483362458)
 

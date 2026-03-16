@@ -1,12 +1,17 @@
+-- DEBUG START
+print("MM2 Chaos Hub: Initializing...")
+
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Mobile Chaos - v12",
-   LoadingTitle = "Executing Elite Hub...",
+   Name = "MM2 Mobile Chaos - v13",
+   LoadingTitle = "Elite Mobile Exploits",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {Enabled = false},
    KeySystem = false
 })
+
+print("MM2 Chaos Hub: UI Loaded!")
 
 local Settings = {
     RoleESP = false,
@@ -15,7 +20,9 @@ local Settings = {
     Noclip = false,
     AutoCoin = false,
     GodMode = false,
-    CoinSpeed = 25
+    CoinSpeed = 25,
+    AuraRange = 20,
+    FlySpeed = 50
 }
 
 -- [ HELPER FUNCTIONS ] --
@@ -26,11 +33,16 @@ local function FlingPlayer(target)
     local oldPos = hrp.CFrame
     
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        hrp.CFrame = target.Character.HumanoidRootPart.CFrame
+        local targetHRP = target.Character.HumanoidRootPart
+        -- Stabilize before fling
+        hrp.Velocity = Vector3.new(0,0,0)
+        hrp.CFrame = targetHRP.CFrame * CFrame.new(0, 0, 1)
+        
         local bV = Instance.new("BodyAngularVelocity", hrp)
         bV.AngularVelocity = Vector3.new(0, 999999, 0)
         bV.MaxTorque = Vector3.new(0, math.huge, 0)
-        task.wait(0.3)
+        
+        task.wait(0.4) -- Time to hit them
         bV:Destroy()
         hrp.CFrame = oldPos
     end
@@ -43,74 +55,89 @@ local SheriffTab = Window:CreateTab("Sheriff", 4483362458)
 local TrollTab = Window:CreateTab("Troll", 4483362458)
 local MiscTab = Window:CreateTab("Misc", 4483362458)
 
--- [ MAIN TAB ] --
-MainTab:CreateSection("Visual Enhancements")
+-- [ MAIN TAB: UTILITIES ] --
+MainTab:CreateSection("Visuals")
 MainTab:CreateToggle({Name = "Role ESP", CurrentValue = false, Callback = function(V) Settings.RoleESP = V end})
 MainTab:CreateButton({Name = "Full Bright", Callback = function() game:GetService("Lighting").Brightness = 2; game:GetService("Lighting").ClockTime = 14 end})
-MainTab:CreateButton({Name = "Remove Shadows", Callback = function() game:GetService("Lighting").GlobalShadows = false end})
-MainTab:CreateButton({Name = "No Fog", Callback = function() game:GetService("Lighting").FogEnd = 100000 end})
-MainTab:CreateSection("Movement")
-MainTab:CreateSlider({Name = "Speed", Range = {16, 150}, Increment = 1, CurrentValue = 16, Callback = function(V) game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = V end})
-MainTab:CreateButton({Name = "Infinite Jump", Callback = function() game:GetService("UserInputService").JumpRequest:Connect(function() game.Players.LocalPlayer.Character.Humanoid:ChangeState("Jumping") end) end})
-MainTab:CreateButton({Name = "Anti-AFK", Callback = function() 
-    local vu = game:GetService("VirtualUser")
-    game.Players.LocalPlayer.Idled:Connect(function() vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame); task.wait(1); vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame) end)
+MainTab:CreateButton({Name = "Remove Fog & Shadows", Callback = function() 
+    game:GetService("Lighting").FogEnd = 100000 
+    game:GetService("Lighting").GlobalShadows = false
 end})
-
--- [ MURDERER TAB ] --
-MurderTab:CreateSection("Murderer Utilities")
-MurderTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Callback = function(V) Settings.KillAura = V end})
-MurderTab:CreateToggle({Name = "Kill All Loop", CurrentValue = false, Callback = function(V) Settings.KillAll = V end})
-MurderTab:CreateButton({Name = "Auto-Equip Knife", Callback = function() 
-    local k = game.Players.LocalPlayer.Backpack:FindFirstChild("Knife")
-    if k then game.Players.LocalPlayer.Character.Humanoid:EquipTool(k) end
-end})
-MurderTab:CreateButton({Name = "TP to Lobby", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 50, 0) end})
-MurderTab:CreateButton({Name = "X-Ray Vision", Callback = function() 
+MainTab:CreateButton({Name = "X-Ray Vision (Walls)", Callback = function() 
     for _, v in pairs(workspace:GetDescendants()) do if v:IsA("BasePart") and v.Transparency < 1 then v.Transparency = 0.5 end end
 end})
 
+MainTab:CreateSection("Movement")
+MainTab:CreateSlider({Name = "WalkSpeed", Range = {16, 200}, Increment = 1, CurrentValue = 16, Callback = function(V) game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = V end})
+MainTab:CreateSlider({Name = "Jump Power", Range = {50, 250}, Increment = 1, CurrentValue = 50, Callback = function(V) game.Players.LocalPlayer.Character.Humanoid.JumpPower = V end})
+MainTab:CreateButton({Name = "Infinite Jump", Callback = function() 
+    game:GetService("UserInputService").JumpRequest:Connect(function() game.Players.LocalPlayer.Character.Humanoid:ChangeState("Jumping") end)
+end})
+
+-- [ MURDERER TAB ] --
+MurderTab:CreateSection("Combat")
+MurderTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Callback = function(V) Settings.KillAura = V end})
+MurderTab:CreateSlider({Name = "Aura Range", Range = {10, 50}, Increment = 1, CurrentValue = 20, Callback = function(V) Settings.AuraRange = V end})
+MurderTab:CreateToggle({Name = "KILL ALL (TP Loop)", CurrentValue = false, Callback = function(V) Settings.KillAll = V end})
+
+MurderTab:CreateSection("Teleports")
+MurderTab:CreateButton({Name = "TP to Random Innocent", Callback = function() 
+    local players = game.Players:GetPlayers()
+    local target = players[math.random(1, #players)]
+    if target ~= game.Players.LocalPlayer and target.Character then
+        game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame
+    end
+end})
+MurderTab:CreateButton({Name = "TP to Lobby", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 50, 0) end})
+
 -- [ SHERIFF TAB ] --
-SheriffTab:CreateSection("Sheriff/Hero Tools")
+SheriffTab:CreateSection("Hero Features")
 SheriffTab:CreateButton({Name = "TP to Dropped Gun", Callback = function() 
     local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
     if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame end
 end})
-SheriffTab:CreateButton({Name = "Auto-Equip Gun", Callback = function() 
-    local g = game.Players.LocalPlayer.Backpack:FindFirstChild("Gun")
-    if g then game.Players.LocalPlayer.Character.Humanoid:EquipTool(g) end
+SheriffTab:CreateButton({Name = "Watch Murderer (Spectate)", Callback = function() 
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
+            workspace.CurrentCamera.CameraSubject = v.Character.Humanoid
+        end
+    end
 end})
-SheriffTab:CreateButton({Name = "Murderer Tracker", Callback = function() 
-    Rayfield:Notify({Title = "Tracking...", Content = "Murderer is highlighted in RED.", Duration = 3})
-    Settings.RoleESP = true
-end})
-SheriffTab:CreateButton({Name = "Fling Murderer", Callback = function() 
-    for _, v in pairs(game.Players:GetPlayers()) do if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then FlingPlayer(v) end end
-end})
+SheriffTab:CreateButton({Name = "Stop Spectating", Callback = function() workspace.CurrentCamera.CameraSubject = game.Players.LocalPlayer.Character.Humanoid end})
 
 -- [ TROLL TAB ] --
-TrollTab:CreateSection("Troll & Fun")
-TrollTab:CreateToggle({Name = "God Mode (Ghost)", CurrentValue = false, Callback = function(V) Settings.GodMode = V end})
+TrollTab:CreateSection("Chaos Tools")
+TrollTab:CreateToggle({Name = "Ghost Mode (God)", CurrentValue = false, Callback = function(V) Settings.GodMode = V end})
 TrollTab:CreateToggle({Name = "Noclip", CurrentValue = false, Callback = function(V) Settings.Noclip = V end})
+TrollTab:CreateButton({Name = "Fling Murderer", Callback = function() 
+    for _, v in pairs(game.Players:GetPlayers()) do if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then FlingPlayer(v) end end
+end})
 TrollTab:CreateButton({Name = "Fling Sheriff", Callback = function() 
     for _, v in pairs(game.Players:GetPlayers()) do if v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then FlingPlayer(v) end end
 end})
-TrollTab:CreateButton({Name = "Fling All Players", Callback = function() 
+TrollTab:CreateButton({Name = "Fling Everyone", Callback = function() 
     for _, v in pairs(game.Players:GetPlayers()) do if v ~= game.Players.LocalPlayer then FlingPlayer(v) end end
 end})
-TrollTab:CreateButton({Name = "Headless (Visual)", Callback = function() if game.Players.LocalPlayer.Character:FindFirstChild("Head") then game.Players.LocalPlayer.Character.Head.Transparency = 1 end end})
-TrollTab:CreateButton({Name = "Giant (Visual)", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(10, 10, 10) end})
+
+TrollTab:CreateSection("Visual Trolls")
+TrollTab:CreateButton({Name = "Be Headless", Callback = function() if game.Players.LocalPlayer.Character:FindFirstChild("Head") then game.Players.LocalPlayer.Character.Head.Transparency = 1 end end})
+TrollTab:CreateButton({Name = "SpinBot", Callback = function() 
+    local bV = Instance.new("BodyAngularVelocity", game.Players.LocalPlayer.Character.HumanoidRootPart)
+    bV.AngularVelocity = Vector3.new(0, 50, 0); bV.MaxTorque = Vector3.new(0, math.huge, 0)
+end})
 
 -- [ MISC TAB ] --
 MiscTab:CreateSection("Automation")
-MiscTab:CreateToggle({Name = "Auto-Collect Coins", CurrentValue = false, Callback = function(V) Settings.AutoCoin = V; Settings.Noclip = V end})
+MiscTab:CreateToggle({Name = "Auto-Collect Coins (Glide)", CurrentValue = false, Callback = function(V) Settings.AutoCoin = V; Settings.Noclip = V end})
 MiscTab:CreateSlider({Name = "Glide Speed", Range = {10, 100}, Increment = 5, CurrentValue = 25, Callback = function(V) Settings.CoinSpeed = V end})
-MiscTab:CreateSection("Server")
+
+MiscTab:CreateSection("Server Control")
 MiscTab:CreateButton({Name = "Server Hop", Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId) end})
-MiscTab:CreateButton({Name = "Rejoin Server", Callback = function() game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
-MiscTab:CreateButton({Name = "Join Smallest Server", Callback = function() Rayfield:Notify({Title = "Coming Soon", Content = "Searching for small servers...", Duration = 3}) end})
 MiscTab:CreateButton({Name = "FPS Booster", Callback = function() 
     for _, v in pairs(workspace:GetDescendants()) do if v:IsA("PostEffect") or v:IsA("ParticleEmitter") then v:Destroy() end end
+end})
+MiscTab:CreateButton({Name = "Anti-AFK", Callback = function() 
+    game.Players.LocalPlayer.Idled:Connect(function() game:GetService("VirtualUser"):ClickButton2(Vector2.new()) end)
 end})
 
 -- [ CORE ENGINE ] --
@@ -119,10 +146,12 @@ game:GetService("RunService").Stepped:Connect(function()
     local char = lp.Character
     if not char then return end
 
+    -- Noclip / God Logic
     if (Settings.Noclip or Settings.AutoCoin or Settings.GodMode) then
         for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
     end
 
+    -- Role ESP
     if Settings.RoleESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character then
@@ -134,20 +163,24 @@ game:GetService("RunService").Stepped:Connect(function()
         end
     end
 
+    -- Kill Logic
     if Settings.KillAura and char:FindFirstChild("Knife") then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
-                if Settings.KillAll then char.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0) end
-                local k = char:FindFirstChild("Knife")
-                if k:FindFirstChild("Stab") then k.Stab:FireServer() end
-                if Settings.KillAll then break end
+                local dist = (char.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
+                if dist <= Settings.AuraRange or Settings.KillAll then
+                    if Settings.KillAll then char.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0) end
+                    local k = char:FindFirstChild("Knife")
+                    if k:FindFirstChild("Stab") then k.Stab:FireServer() end
+                    if Settings.KillAll then task.wait(0.1); break end
+                end
             end
         end
     end
 end)
 
--- Auto-Coin Glide Loop
-spawn(function()
+-- Auto-Coin Loop
+task.spawn(function()
     while true do
         task.wait(0.5)
         if Settings.AutoCoin and game.Players.LocalPlayer.Character then

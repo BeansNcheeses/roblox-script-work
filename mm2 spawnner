@@ -1,8 +1,8 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Chaos Hub v6",
-   LoadingTitle = "Skin Injection Active",
+   Name = "MM2 Chaos Hub - Final",
+   LoadingTitle = "Initializing Hub...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {Enabled = false},
    KeySystem = false
@@ -11,90 +11,57 @@ local Window = Rayfield:CreateWindow({
 local Settings = {
     RoleESP = false,
     KillAura = false,
+    TargetMesh = "",
+    TargetTexture = ""
 }
 
 -- MAIN TAB
-local MainTab = Window:CreateTab("Main", 4483362458)
+local MainTab = Window:CreateTab("Combat & Visuals", 4483362458)
 
 MainTab:CreateToggle({
-   Name = "Role ESP",
+   Name = "Role ESP (Murderer/Sheriff)",
    CurrentValue = false,
    Callback = function(Value) Settings.RoleESP = Value end,
 })
 
 MainTab:CreateToggle({
-   Name = "Kill Aura",
+   Name = "Kill Aura (Must be Murderer)",
    CurrentValue = false,
    Callback = function(Value) Settings.KillAura = Value end,
 })
 
--- SKINS & ITEMS TAB
-local VisualTab = Window:CreateTab("Skins", 4483362458)
+-- SKINS TAB
+local SkinTab = Window:CreateTab("Skins", 4483362458)
+SkinTab:CreateSection("Knife Mesh Swapper (Visual Only)")
 
-VisualTab:CreateButton({
-   Name = "Unlock All Skins (Client-Side)",
-   Info = "Makes 8 of every skin appear in your inventory menu.",
-   Callback = function()
-       local PlayerGui = game.Players.LocalPlayer:FindFirstChild("PlayerGui")
-       local Inventory = game.Players.LocalPlayer:FindFirstChild("Backpack")
-       
-       -- Attempting to hook into the game's item database
-       -- This varies by MM2 version, but targets the local item table
-       local modules = game:GetService("ReplicatedStorage"):FindFirstChild("Modules")
-       local itemData = modules and modules:FindFirstChild("ItemData")
-       
-       if itemData then
-           local items = require(itemData)
-           for i, v in pairs(items) do
-               -- Local injection logic to trick the UI
-               -- This adds the visual entry to your inventory screen
-               print("Visual Unlocked: " .. tostring(i))
-           end
-           Rayfield:Notify({Title = "Skins Injected", Content = "Check your inventory! (Visual Only)", Duration = 5})
-       else
-           Rayfield:Notify({Title = "Error", Content = "Could not find Item Database.", Duration = 5})
-       end
-   end,
-})
-
--- Add this right under your VisualTab creation in the script
-
-local SkinToSpawn = ""
-
-VisualTab:CreateSection("Custom Visual Spawner")
-
-VisualTab:CreateInput({
-   Name = "Target Skin Name",
-   PlaceholderText = "e.g. Chroma Fang, Luger",
+SkinTab:CreateInput({
+   Name = "Mesh ID",
+   PlaceholderText = "rbxassetid://...",
    RemoveTextAfterFocusLost = false,
-   Callback = function(Text)
-       SkinToSpawn = Text
-   end,
+   Callback = function(Text) Settings.TargetMesh = Text end,
 })
 
-VisualTab:CreateButton({
-   Name = "Spawn Specific Skin in Hand",
+SkinTab:CreateInput({
+   Name = "Texture ID",
+   PlaceholderText = "rbxassetid://...",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text) Settings.TargetTexture = Text end,
+})
+
+SkinTab:CreateButton({
+   Name = "Apply Visual Skin",
    Callback = function()
-       if SkinToSpawn == "" then
-           Rayfield:Notify({Title = "Error", Content = "Please enter a skin name first.", Duration = 3})
-           return
-       end
-
-       local lp = game.Players.LocalPlayer
-       -- Deep search through ReplicatedStorage for the exact name
-       local source = game:GetService("ReplicatedStorage"):FindFirstChild(SkinToSpawn, true)
-
-       if source and (source:IsA("Tool") or source:IsA("Model")) and lp.Character then
-           local clone = source:Clone()
-           clone.Parent = lp.Character
-           
-           -- Force equip if it's a tool
-           if clone:IsA("Tool") then
-               lp.Character.Humanoid:EquipTool(clone)
+       local char = game.Players.LocalPlayer.Character
+       local knife = char and char:FindFirstChild("Knife")
+       if knife and knife:FindFirstChild("Handle") then
+           local mesh = knife.Handle:FindFirstChildOfClass("SpecialMesh")
+           if mesh then
+               if Settings.TargetMesh ~= "" then mesh.MeshId = Settings.TargetMesh end
+               if Settings.TargetTexture ~= "" then mesh.TextureId = Settings.TargetTexture end
+               Rayfield:Notify({Title = "Success", Content = "Skin applied to hand!", Duration = 3})
            end
-           Rayfield:Notify({Title = "Success", Content = "Equipped visual " .. SkinToSpawn, Duration = 3})
        else
-           Rayfield:Notify({Title = "Failed", Content = "Could not find " .. SkinToSpawn .. " in game files. Check spelling.", Duration = 4})
+           Rayfield:Notify({Title = "Error", Content = "Equip your default knife first!", Duration = 3})
        end
    end,
 })
@@ -104,7 +71,7 @@ local MoveTab = Window:CreateTab("Movement", 4483362458)
 
 MoveTab:CreateSlider({
    Name = "WalkSpeed",
-   Range = {16, 150},
+   Range = {16, 100},
    Increment = 1,
    CurrentValue = 16,
    Callback = function(Value)
@@ -114,19 +81,9 @@ MoveTab:CreateSlider({
    end,
 })
 
-MoveTab:CreateButton({
-   Name = "Infinite Jump",
-   Callback = function()
-       game:GetService("UserInputService").JumpRequest:Connect(function()
-           if game.Players.LocalPlayer.Character then
-               game.Players.LocalPlayer.Character.Humanoid:ChangeState("Jumping")
-           end
-       end)
-   end,
-})
-
 -- CORE LOGIC
 game:GetService("RunService").RenderStepped:Connect(function()
+    -- ESP Logic
     if Settings.RoleESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= game.Players.LocalPlayer and v.Character then
@@ -137,6 +94,25 @@ game:GetService("RunService").RenderStepped:Connect(function()
                     h.FillColor = Color3.fromRGB(0, 0, 255)
                 else
                     h.FillColor = Color3.fromRGB(255, 255, 255)
+                end
+            end
+        end
+    end
+
+    -- Kill Aura Logic
+    if Settings.KillAura then
+        local lp = game.Players.LocalPlayer
+        local char = lp.Character
+        if char and char:FindFirstChild("Knife") then
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (char.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
+                    if dist < 15 then
+                        local knife = char:FindFirstChild("Knife")
+                        if knife:FindFirstChild("Stab") then
+                            knife.Stab:FireServer()
+                        end
+                    end
                 end
             end
         end

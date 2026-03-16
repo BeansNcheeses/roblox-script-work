@@ -82,6 +82,33 @@ MiscTab:CreateButton({
     end
 })
 
+-- Add this inside your Murderer or Skins Tab section
+MurderTab:CreateButton({
+   Name = "Fake Equip: Corrupt",
+   Callback = function()
+       local lp = game.Players.LocalPlayer
+       local char = lp.Character
+       local knife = char:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
+       
+       -- Corrupt IDs
+       local corruptMesh = "rbxassetid://247055041"
+       local corruptTex = "rbxassetid://247055241"
+
+       if knife then
+           local handle = knife:FindFirstChild("Handle")
+           local mesh = handle:FindFirstChildOfClass("SpecialMesh")
+           
+           if mesh then
+               mesh.MeshId = corruptMesh
+               mesh.TextureId = corruptTex
+               Rayfield:Notify({Title = "Success", Content = "Corrupt Equipped (Visual Only)", Duration = 3})
+           end
+       else
+           Rayfield:Notify({Title = "Error", Content = "Knife not found! Equip default first.", Duration = 3})
+       end
+   end,
+})
+
 -- [ ENGINE ]
 game:GetService("RunService").Stepped:Connect(function()
     local char = game.Players.LocalPlayer.Character

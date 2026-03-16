@@ -1,0 +1,126 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "MM2 Chaos Hub",
+   LoadingTitle = "Loading MM2 Scripts...",
+   LoadingSubtitle = "by Gemini",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "MM2Chaos",
+      FileName = "Settings"
+   },
+   KeySystem = false
+})
+
+local Settings = {
+    RoleESP = false,
+    KillAura = false,
+    WalkSpeed = 16
+}
+
+-- MAIN TAB
+local MainTab = Window:CreateTab("Main", 4483362458)
+local ESPSection = MainTab:CreateSection("Visuals")
+
+MainTab:CreateToggle({
+   Name = "Role ESP",
+   CurrentValue = false,
+   Flag = "RoleESP",
+   Callback = function(Value)
+      Settings.RoleESP = Value
+   end,
+})
+
+local CombatSection = MainTab:CreateSection("Combat")
+
+MainTab:CreateToggle({
+   Name = "Kill Aura (Must be Murderer)",
+   CurrentValue = false,
+   Flag = "KillAura",
+   Callback = function(Value)
+      Settings.KillAura = Value
+   end,
+})
+
+-- VISUAL ITEMS TAB
+local VisualTab = Window:CreateTab("Visual Items", 4483362458)
+VisualTab:CreateSection("Fake Items (Client-Side Only)")
+
+VisualTab:CreateButton({
+   Name = "Spawn Fake Knife",
+   Callback = function()
+       local lp = game.Players.LocalPlayer
+       local source = game:GetService("ReplicatedStorage"):FindFirstChild("Knife", true)
+       if source and lp.Character then
+           local clone = source:Clone()
+           clone.Parent = lp.Character
+           lp.Character.Humanoid:EquipTool(clone)
+       end
+   end,
+})
+
+VisualTab:CreateButton({
+   Name = "Spawn Fake Gun",
+   Callback = function()
+       local lp = game.Players.LocalPlayer
+       local source = game:GetService("ReplicatedStorage"):FindFirstChild("Gun", true)
+       if source and lp.Character then
+           local clone = source:Clone()
+           clone.Parent = lp.Character
+           lp.Character.Humanoid:EquipTool(clone)
+       end
+   end,
+})
+
+-- MOVEMENT TAB
+local MoveTab = Window:CreateTab("Movement", 4483362458)
+MoveTab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {16, 150},
+   Increment = 1,
+   Suffix = "Studs",
+   CurrentValue = 16,
+   Flag = "SpeedSlider",
+   Callback = function(Value)
+      if game.Players.LocalPlayer.Character then
+          game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+      end
+   end,
+})
+
+-- CORE LOGIC LOOP
+game:GetService("RunService").RenderStepped:Connect(function()
+    -- ESP Logic
+    if Settings.RoleESP then
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= game.Players.LocalPlayer and v.Character then
+                local h = v.Character:FindFirstChild("Highlight") or Instance.new("Highlight", v.Character)
+                if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
+                    h.FillColor = Color3.fromRGB(255, 0, 0) -- Murderer
+                elseif v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then
+                    h.FillColor = Color3.fromRGB(0, 0, 255) -- Sheriff
+                else
+                    h.FillColor = Color3.fromRGB(255, 255, 255) -- Innocent
+                end
+            end
+        end
+    end
+
+    -- Kill Aura Logic
+    if Settings.KillAura then
+        local lp = game.Players.LocalPlayer
+        if lp.Character and lp.Character:FindFirstChild("Knife") then
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v ~= lp and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                    local dist = (lp.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
+                    if dist < 15 then
+                        local knife = lp.Character:FindFirstChild("Knife")
+                        if knife:FindFirstChild("Stab") then
+                            knife.Stab:FireServer()
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)

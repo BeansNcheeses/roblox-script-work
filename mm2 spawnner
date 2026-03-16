@@ -1,8 +1,8 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Mobile Chaos - v11",
-   LoadingTitle = "Building the Chaos...",
+   Name = "MM2 Mobile Chaos - v12",
+   LoadingTitle = "Executing Elite Hub...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {Enabled = false},
    KeySystem = false
@@ -15,40 +15,25 @@ local Settings = {
     Noclip = false,
     AutoCoin = false,
     GodMode = false,
-    SilentAim = false,
-    CoinSpeed = 20
+    CoinSpeed = 25
 }
 
--- [ FUNCTIONS ] --
+-- [ HELPER FUNCTIONS ] --
 local function FlingPlayer(target)
     local lp = game.Players.LocalPlayer
     local char = lp.Character
     local hrp = char:FindFirstChild("HumanoidRootPart")
     local oldPos = hrp.CFrame
-    local oldNoclip = Settings.Noclip
     
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
-        Settings.Noclip = false -- Collisions must be ON to fling
         hrp.CFrame = target.Character.HumanoidRootPart.CFrame
-        
         local bV = Instance.new("BodyAngularVelocity", hrp)
         bV.AngularVelocity = Vector3.new(0, 999999, 0)
         bV.MaxTorque = Vector3.new(0, math.huge, 0)
-        
-        task.wait(0.3) -- Quick burst
+        task.wait(0.3)
         bV:Destroy()
         hrp.CFrame = oldPos
-        Settings.Noclip = oldNoclip
     end
-end
-
-local function GlideTo(targetPos)
-    local hrp = game.Players.LocalPlayer.Character.HumanoidRootPart
-    local distance = (hrp.Position - targetPos).Magnitude
-    local duration = distance / Settings.CoinSpeed
-    local tween = game:GetService("TweenService"):Create(hrp, TweenInfo.new(duration, Enum.EasingStyle.Linear), {CFrame = CFrame.new(targetPos)})
-    tween:Play()
-    return tween
 end
 
 -- [ TABS ] --
@@ -59,83 +44,103 @@ local TrollTab = Window:CreateTab("Troll", 4483362458)
 local MiscTab = Window:CreateTab("Misc", 4483362458)
 
 -- [ MAIN TAB ] --
-MainTab:CreateSection("Visuals")
+MainTab:CreateSection("Visual Enhancements")
 MainTab:CreateToggle({Name = "Role ESP", CurrentValue = false, Callback = function(V) Settings.RoleESP = V end})
 MainTab:CreateButton({Name = "Full Bright", Callback = function() game:GetService("Lighting").Brightness = 2; game:GetService("Lighting").ClockTime = 14 end})
+MainTab:CreateButton({Name = "Remove Shadows", Callback = function() game:GetService("Lighting").GlobalShadows = false end})
 MainTab:CreateButton({Name = "No Fog", Callback = function() game:GetService("Lighting").FogEnd = 100000 end})
 MainTab:CreateSection("Movement")
-MainTab:CreateSlider({Name = "WalkSpeed", Range = {16, 150}, Increment = 1, CurrentValue = 16, Callback = function(V) game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = V end})
+MainTab:CreateSlider({Name = "Speed", Range = {16, 150}, Increment = 1, CurrentValue = 16, Callback = function(V) game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = V end})
 MainTab:CreateButton({Name = "Infinite Jump", Callback = function() game:GetService("UserInputService").JumpRequest:Connect(function() game.Players.LocalPlayer.Character.Humanoid:ChangeState("Jumping") end) end})
+MainTab:CreateButton({Name = "Anti-AFK", Callback = function() 
+    local vu = game:GetService("VirtualUser")
+    game.Players.LocalPlayer.Idled:Connect(function() vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame); task.wait(1); vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame) end)
+end})
 
 -- [ MURDERER TAB ] --
-MurderTab:CreateSection("Combat")
+MurderTab:CreateSection("Murderer Utilities")
 MurderTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Callback = function(V) Settings.KillAura = V end})
-MurderTab:CreateToggle({Name = "Kill All (TP Loop)", CurrentValue = false, Callback = function(V) Settings.KillAll = V end})
-MurderTab:CreateToggle({Name = "Knife Silent Aim", CurrentValue = false, Callback = function(V) Settings.SilentAim = V end})
-MurderTab:CreateSection("Stealth")
-MurderTab:CreateButton({Name = "Fake Emote (Hide Knife)", Callback = function() -- Logic for hiding knife anim end})
-MurderTab:CreateButton({Name = "TP to Map (Random)", Callback = function() -- Logic for map TP end})
+MurderTab:CreateToggle({Name = "Kill All Loop", CurrentValue = false, Callback = function(V) Settings.KillAll = V end})
+MurderTab:CreateButton({Name = "Auto-Equip Knife", Callback = function() 
+    local k = game.Players.LocalPlayer.Backpack:FindFirstChild("Knife")
+    if k then game.Players.LocalPlayer.Character.Humanoid:EquipTool(k) end
+end})
+MurderTab:CreateButton({Name = "TP to Lobby", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 50, 0) end})
+MurderTab:CreateButton({Name = "X-Ray Vision", Callback = function() 
+    for _, v in pairs(workspace:GetDescendants()) do if v:IsA("BasePart") and v.Transparency < 1 then v.Transparency = 0.5 end end
+end})
 
 -- [ SHERIFF TAB ] --
-SheriffTab:CreateSection("Hero Tools")
-SheriffTab:CreateButton({Name = "TP to Gun", Callback = function() 
+SheriffTab:CreateSection("Sheriff/Hero Tools")
+SheriffTab:CreateButton({Name = "TP to Dropped Gun", Callback = function() 
     local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
     if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame end
+end})
+SheriffTab:CreateButton({Name = "Auto-Equip Gun", Callback = function() 
+    local g = game.Players.LocalPlayer.Backpack:FindFirstChild("Gun")
+    if g then game.Players.LocalPlayer.Character.Humanoid:EquipTool(g) end
+end})
+SheriffTab:CreateButton({Name = "Murderer Tracker", Callback = function() 
+    Rayfield:Notify({Title = "Tracking...", Content = "Murderer is highlighted in RED.", Duration = 3})
+    Settings.RoleESP = true
 end})
 SheriffTab:CreateButton({Name = "Fling Murderer", Callback = function() 
     for _, v in pairs(game.Players:GetPlayers()) do if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then FlingPlayer(v) end end
 end})
-SheriffTab:CreateButton({Name = "Murderer Distance ESP", Callback = function() -- Logic to show studs to murder end})
 
 -- [ TROLL TAB ] --
-TrollTab:CreateSection("Chaos")
-TrollTab:CreateToggle({Name = "God Mode (Untargetable)", CurrentValue = false, Callback = function(V) Settings.GodMode = V end})
+TrollTab:CreateSection("Troll & Fun")
+TrollTab:CreateToggle({Name = "God Mode (Ghost)", CurrentValue = false, Callback = function(V) Settings.GodMode = V end})
+TrollTab:CreateToggle({Name = "Noclip", CurrentValue = false, Callback = function(V) Settings.Noclip = V end})
 TrollTab:CreateButton({Name = "Fling Sheriff", Callback = function() 
     for _, v in pairs(game.Players:GetPlayers()) do if v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then FlingPlayer(v) end end
 end})
-TrollTab:CreateButton({Name = "Fling All", Callback = function() 
+TrollTab:CreateButton({Name = "Fling All Players", Callback = function() 
     for _, v in pairs(game.Players:GetPlayers()) do if v ~= game.Players.LocalPlayer then FlingPlayer(v) end end
 end})
-TrollTab:CreateToggle({Name = "Noclip", CurrentValue = false, Callback = function(V) Settings.Noclip = V end})
-TrollTab:CreateButton({Name = "Lag Server (Visual)", Callback = function() -- Logic for client-side lag end})
+TrollTab:CreateButton({Name = "Headless (Visual)", Callback = function() if game.Players.LocalPlayer.Character:FindFirstChild("Head") then game.Players.LocalPlayer.Character.Head.Transparency = 1 end end})
+TrollTab:CreateButton({Name = "Giant (Visual)", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.Size = Vector3.new(10, 10, 10) end})
 
 -- [ MISC TAB ] --
 MiscTab:CreateSection("Automation")
-MiscTab:CreateToggle({Name = "Auto-Collect Coins (Glide)", CurrentValue = false, Callback = function(V) Settings.AutoCoin = V; Settings.Noclip = V end})
-MiscTab:CreateSlider({Name = "Glide Speed", Range = {10, 100}, Increment = 5, CurrentValue = 20, Callback = function(V) Settings.CoinSpeed = V end})
-MiscTab:CreateSection("Utilities")
+MiscTab:CreateToggle({Name = "Auto-Collect Coins", CurrentValue = false, Callback = function(V) Settings.AutoCoin = V; Settings.Noclip = V end})
+MiscTab:CreateSlider({Name = "Glide Speed", Range = {10, 100}, Increment = 5, CurrentValue = 25, Callback = function(V) Settings.CoinSpeed = V end})
+MiscTab:CreateSection("Server")
 MiscTab:CreateButton({Name = "Server Hop", Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId) end})
-MiscTab:CreateButton({Name = "FPS Booster", Callback = function() -- Optimized cleaner end})
+MiscTab:CreateButton({Name = "Rejoin Server", Callback = function() game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId) end})
+MiscTab:CreateButton({Name = "Join Smallest Server", Callback = function() Rayfield:Notify({Title = "Coming Soon", Content = "Searching for small servers...", Duration = 3}) end})
+MiscTab:CreateButton({Name = "FPS Booster", Callback = function() 
+    for _, v in pairs(workspace:GetDescendants()) do if v:IsA("PostEffect") or v:IsA("ParticleEmitter") then v:Destroy() end end
+end})
 
--- [ CORE LOGIC ] --
+-- [ CORE ENGINE ] --
 game:GetService("RunService").Stepped:Connect(function()
     local lp = game.Players.LocalPlayer
     local char = lp.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    if not char then return end
 
-    -- Noclip & God Mode
-    if (Settings.Noclip or Settings.AutoCoin or Settings.GodMode) and char then
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
-    end
-    
-    if Settings.GodMode then
-        char.HumanoidRootPart.CFrame = char.HumanoidRootPart.CFrame * CFrame.new(0, 0, 0) -- Keeps physics active but prevents collisions
+    if (Settings.Noclip or Settings.AutoCoin or Settings.GodMode) then
+        for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
     end
 
-    -- Role ESP
     if Settings.RoleESP then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= lp and v.Character then
                 local h = v.Character:FindFirstChild("Highlight") or Instance.new("Highlight", v.Character)
-                if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
-                    h.FillColor = Color3.fromRGB(255, 0, 0)
-                elseif v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then
-                    h.FillColor = Color3.fromRGB(0, 0, 255)
-                else
-                    h.FillColor = Color3.fromRGB(255, 255, 255)
-                end
+                if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then h.FillColor = Color3.fromRGB(255, 0, 0)
+                elseif v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then h.FillColor = Color3.fromRGB(0, 0, 255)
+                else h.FillColor = Color3.fromRGB(255, 255, 255) end
+            end
+        end
+    end
+
+    if Settings.KillAura and char:FindFirstChild("Knife") then
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
+                if Settings.KillAll then char.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0) end
+                local k = char:FindFirstChild("Knife")
+                if k:FindFirstChild("Stab") then k.Stab:FireServer() end
+                if Settings.KillAll then break end
             end
         end
     end
@@ -145,14 +150,16 @@ end)
 spawn(function()
     while true do
         task.wait(0.5)
-        if Settings.AutoCoin then
+        if Settings.AutoCoin and game.Players.LocalPlayer.Character then
             local coins = workspace:FindFirstChild("CoinContainer", true)
             if coins then
                 for _, coin in pairs(coins:GetChildren()) do
                     if coin:IsA("BasePart") and Settings.AutoCoin then
-                        local t = GlideTo(coin.Position)
-                        t.Completed:Wait()
-                        task.wait(0.1)
+                        local hrp = game.Players.LocalPlayer.Character.HumanoidRootPart
+                        local dist = (hrp.Position - coin.Position).Magnitude
+                        local tween = game:GetService("TweenService"):Create(hrp, TweenInfo.new(dist/Settings.CoinSpeed, Enum.EasingStyle.Linear), {CFrame = CFrame.new(coin.Position)})
+                        tween:Play()
+                        tween.Completed:Wait()
                     end
                 end
             end

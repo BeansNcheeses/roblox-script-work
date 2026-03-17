@@ -1,11 +1,8 @@
--- Wait for game to load
-if not game:IsLoaded() then game.Loaded:Wait() end
-
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Mobile Lite - v14",
-   LoadingTitle = "Starting...",
+   Name = "MM2 Mobile Chaos - v15",
+   LoadingTitle = "Loading Mega Hub...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {Enabled = false},
    KeySystem = false
@@ -16,12 +13,73 @@ local Settings = {
     KillAll = false,
     Noclip = false,
     AutoCoin = false,
-    CoinSpeed = 25
+    CoinSpeed = 25,
+    RoleESP = false
 }
 
--- [ TROLL TAB ]
-local TrollTab = Window:CreateTab("Troll", 4483362458)
+-- [ TABLES ] --
+local GodlyList = {
+    ["Corrupt"] = {Mesh = "247055041", Tex = "247055241"},
+    ["Harvester"] = {Mesh = "11414115162", Tex = "11414117502"},
+    ["Batwing"] = {Mesh = "1615524100", Tex = "1615524024"},
+    ["Icebreaker"] = {Mesh = "6025164805", Tex = "6025164716"},
+    ["Candylane"] = {Mesh = "554553250", Tex = "554553335"},
+    ["Chroma Shark"] = {Mesh = "186782431", Tex = "186782467"},
+    ["Luger"] = {Mesh = "186951232", Tex = "186951246"},
+    ["Slasher"] = {Mesh = "219904260", Tex = "219904281"},
+    ["Tides"] = {Mesh = "301053180", Tex = "301053199"},
+    ["Heat"] = {Mesh = "243105671", Tex = "243105708"}
+}
 
+local GodlyNames = {}
+for name, _ in pairs(GodlyList) do table.insert(GodlyNames, name) end
+
+-- [ TABS ] --
+local MainTab = Window:CreateTab("Main", 4483362458)
+local MurderTab = Window:CreateTab("Murderer", 4483362458)
+local SheriffTab = Window:CreateTab("Sheriff", 4483362458)
+local TrollTab = Window:CreateTab("Troll", 4483362458)
+local MiscTab = Window:CreateTab("Misc", 4483362458)
+
+-- [ MAIN TAB ] --
+MainTab:CreateToggle({Name = "Role ESP", CurrentValue = false, Callback = function(V) Settings.RoleESP = V end})
+MainTab:CreateSlider({Name = "WalkSpeed", Range = {16, 150}, Increment = 1, CurrentValue = 16, Callback = function(V) game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = V end})
+
+-- [ MURDERER TAB ] --
+MurderTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Callback = function(V) Settings.KillAura = V end})
+MurderTab:CreateToggle({Name = "Kill All (TP Loop)", CurrentValue = false, Callback = function(V) Settings.KillAll = V end})
+MurderTab:CreateSection("Skins")
+MurderTab:CreateDropdown({
+   Name = "Visual Inventory",
+   Options = GodlyNames,
+   CurrentOption = "Select a Knife",
+   Callback = function(Option)
+       local lp = game.Players.LocalPlayer
+       local knife = lp.Character:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChild("Knife")
+       if knife then
+           local handle = knife:FindFirstChild("Handle") or knife:FindFirstChildOfClass("Part")
+           local mesh = handle and handle:FindFirstChildOfClass("SpecialMesh")
+           if mesh then
+               mesh.MeshId = "rbxassetid://" .. GodlyList[Option].Mesh
+               mesh.TextureId = "rbxassetid://" .. GodlyList[Option].Tex
+               Rayfield:Notify({Title = "Success", Content = "Equipped " .. Option .. " (Visual Only)", Duration = 3})
+           end
+       end
+   end,
+})
+
+-- [ SHERIFF TAB ] --
+SheriffTab:CreateButton({
+    Name = "TP to Gun",
+    Callback = function()
+        local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
+        if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame * CFrame.new(0, 3, 0)
+        end
+    end
+})
+
+-- [ TROLL TAB ] --
 TrollTab:CreateButton({
     Name = "Fling Murderer",
     Callback = function()
@@ -41,93 +99,38 @@ TrollTab:CreateButton({
         end
     end
 })
+TrollTab:CreateToggle({Name = "Noclip / Ghost", CurrentValue = false, Callback = function(V) Settings.Noclip = V end})
 
-TrollTab:CreateToggle({
-    Name = "God Mode / Ghost",
-    CurrentValue = false,
-    Callback = function(V) Settings.Noclip = V end
-})
+-- [ MISC TAB ] --
+MiscTab:CreateToggle({Name = "Auto-Collect Coins", CurrentValue = false, Callback = function(V) Settings.AutoCoin = V; Settings.Noclip = V end})
+MiscTab:CreateButton({Name = "Server Hop", Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId) end})
 
--- [ MURDERER TAB ]
-local MurderTab = Window:CreateTab("Murderer", 4483362458)
-
-MurderTab:CreateToggle({
-    Name = "Kill Aura",
-    CurrentValue = false,
-    Callback = function(V) Settings.KillAura = V end
-})
-
-MurderTab:CreateToggle({
-    Name = "Kill All (Loop)",
-    CurrentValue = false,
-    Callback = function(V) Settings.KillAll = V end
-})
-
--- [ MISC TAB ]
-local MiscTab = Window:CreateTab("Misc", 4483362458)
-
-MiscTab:CreateToggle({
-    Name = "Auto-Collect Coins",
-    CurrentValue = false,
-    Callback = function(V) Settings.AutoCoin = V; Settings.Noclip = V end
-})
-
-MiscTab:CreateButton({
-    Name = "TP to Gun",
-    Callback = function()
-        local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
-        if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then
-            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame
-        end
-    end
-})
-
--- Add this inside your Murderer or Skins Tab section
-MurderTab:CreateButton({
-   Name = "Fake Equip: Corrupt",
-   Callback = function()
-       local lp = game.Players.LocalPlayer
-       local char = lp.Character
-       local knife = char:FindFirstChild("Knife") or lp.Backpack:FindFirstChild("Knife")
-       
-       -- Corrupt IDs
-       local corruptMesh = "rbxassetid://247055041"
-       local corruptTex = "rbxassetid://247055241"
-
-       if knife then
-           local handle = knife:FindFirstChild("Handle")
-           local mesh = handle:FindFirstChildOfClass("SpecialMesh")
-           
-           if mesh then
-               mesh.MeshId = corruptMesh
-               mesh.TextureId = corruptTex
-               Rayfield:Notify({Title = "Success", Content = "Corrupt Equipped (Visual Only)", Duration = 3})
-           end
-       else
-           Rayfield:Notify({Title = "Error", Content = "Knife not found! Equip default first.", Duration = 3})
-       end
-   end,
-})
-
--- [ ENGINE ]
+-- [ ENGINE ] --
 game:GetService("RunService").Stepped:Connect(function()
     local char = game.Players.LocalPlayer.Character
     if not char then return end
 
     if Settings.Noclip then
-        for _, v in pairs(char:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
+        for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
     end
 
     if Settings.KillAura and char:FindFirstChild("Knife") then
         for _, v in pairs(game.Players:GetPlayers()) do
             if v ~= game.Players.LocalPlayer and v.Character and v.Character.Humanoid.Health > 0 then
-                if Settings.KillAll then 
-                    char.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0) 
-                end
+                if Settings.KillAll then char.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0) end
                 local k = char:FindFirstChild("Knife")
                 if k:FindFirstChild("Stab") then k.Stab:FireServer() end
+            end
+        end
+    end
+    
+    if Settings.RoleESP then
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= game.Players.LocalPlayer and v.Character then
+                local h = v.Character:FindFirstChild("Highlight") or Instance.new("Highlight", v.Character)
+                if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then h.FillColor = Color3.fromRGB(255, 0, 0)
+                elseif v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then h.FillColor = Color3.fromRGB(0, 0, 255)
+                else h.FillColor = Color3.fromRGB(255, 255, 255) end
             end
         end
     end

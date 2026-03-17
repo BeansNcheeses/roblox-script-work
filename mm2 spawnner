@@ -1,158 +1,134 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- MM2 Private Inventory Hub v18 (Stable Mobile Version)
+local ScreenGui = Instance.new("ScreenGui", game.CoreGui)
+local Main = Instance.new("Frame", ScreenGui)
+Main.Size = UDim2.new(0, 360, 0, 260)
+Main.Position = UDim2.new(0.5, -180, 0.5, -130)
+Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
 
-local Window = Rayfield:CreateWindow({
-   Name = "MM2 Mobile Chaos - v15",
-   LoadingTitle = "Loading Mega Hub...",
-   LoadingSubtitle = "by Gemini",
-   ConfigurationSaving = {Enabled = false},
-   KeySystem = false
-})
+-- Rounded Corners
+local Corner = Instance.new("UICorner", Main)
+Corner.CornerRadius = UDim.new(0, 10)
 
-local Settings = {
-    KillAura = false,
-    KillAll = false,
-    Noclip = false,
-    AutoCoin = false,
-    CoinSpeed = 25,
-    RoleESP = false
+-- Title
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.Text = "  GODLY INVENTORY HUB"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Instance.new("UICorner", Title).CornerRadius = UDim.new(0, 10)
+
+-- Search Bar
+local SearchBar = Instance.new("TextBox", Main)
+SearchBar.Size = UDim2.new(0, 150, 0, 25)
+SearchBar.Position = UDim2.new(0, 5, 0, 40)
+SearchBar.PlaceholderText = "Search Knives..."
+SearchBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SearchBar.TextColor3 = Color3.new(1,1,1)
+SearchBar.BorderSizePixel = 0
+
+-- Scrolling Container
+local Scroll = Instance.new("ScrollingFrame", Main)
+Scroll.Size = UDim2.new(0, 150, 0, 185)
+Scroll.Position = UDim2.new(0, 5, 0, 70)
+Scroll.CanvasSize = UDim2.new(0, 0, 3, 0)
+Scroll.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Scroll.BorderSizePixel = 0
+
+local UIList = Instance.new("UIListLayout", Scroll)
+UIList.Padding = UDim.new(0, 4)
+
+-- Preview Window
+local Preview = Instance.new("Frame", Main)
+Preview.Size = UDim2.new(0, 190, 0, 215)
+Preview.Position = UDim2.new(0, 160, 0, 40)
+Preview.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Instance.new("UICorner", Preview)
+
+local ItemTitle = Instance.new("TextLabel", Preview)
+ItemTitle.Size = UDim2.new(1, 0, 0, 40)
+ItemTitle.Text = "Select an Item"
+ItemTitle.TextColor3 = Color3.new(1, 1, 1)
+ItemTitle.BackgroundTransparency = 1
+ItemTitle.TextWrapped = true
+
+local EquipBtn = Instance.new("TextButton", Preview)
+EquipBtn.Size = UDim2.new(0, 150, 0, 45)
+EquipBtn.Position = UDim2.new(0.5, -75, 0.7, 0)
+EquipBtn.Text = "EQUIP"
+EquipBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+EquipBtn.TextColor3 = Color3.new(1, 1, 1)
+EquipBtn.Font = Enum.Font.SourceSansBold
+EquipBtn.TextSize = 20
+Instance.new("UICorner", EquipBtn)
+
+-- DATA TABLE
+local Godlies = {
+    ["Corrupt"] = {Mesh = "247055041", Tex = "247055241", Color = Color3.fromRGB(120, 120, 120)},
+    ["Harvester"] = {Mesh = "11414115162", Tex = "11414117502", Color = Color3.fromRGB(40, 180, 40)},
+    ["Icebreaker"] = {Mesh = "6025164805", Tex = "6025164716", Color = Color3.fromRGB(0, 160, 255)},
+    ["Batwing"] = {Mesh = "1615524100", Tex = "1615524024", Color = Color3.fromRGB(150, 0, 0)},
+    ["Candylane"] = {Mesh = "554553250", Tex = "554553335", Color = Color3.fromRGB(255, 80, 80)},
+    ["Chroma Tides"] = {Mesh = "301053180", Tex = "301053199", Color = Color3.fromRGB(255, 0, 255)},
+    ["Luger"] = {Mesh = "186951232", Tex = "186951246", Color = Color3.fromRGB(200, 180, 0)},
+    ["Heat"] = {Mesh = "243105671", Tex = "243105708", Color = Color3.fromRGB(255, 100, 0)}
 }
 
--- [ TABLES ] --
-local GodlyList = {
-    ["Corrupt"] = {Mesh = "247055041", Tex = "247055241"},
-    ["Harvester"] = {Mesh = "11414115162", Tex = "11414117502"},
-    ["Batwing"] = {Mesh = "1615524100", Tex = "1615524024"},
-    ["Icebreaker"] = {Mesh = "6025164805", Tex = "6025164716"},
-    ["Candylane"] = {Mesh = "554553250", Tex = "554553335"},
-    ["Chroma Shark"] = {Mesh = "186782431", Tex = "186782467"},
-    ["Luger"] = {Mesh = "186951232", Tex = "186951246"},
-    ["Slasher"] = {Mesh = "219904260", Tex = "219904281"},
-    ["Tides"] = {Mesh = "301053180", Tex = "301053199"},
-    ["Heat"] = {Mesh = "243105671", Tex = "243105708"}
-}
+local Selection = nil
 
-local GodlyNames = {}
-for name, _ in pairs(GodlyList) do table.insert(GodlyNames, name) end
-
--- [ TABS ] --
-local MainTab = Window:CreateTab("Main", 4483362458)
-local MurderTab = Window:CreateTab("Murderer", 4483362458)
-local SheriffTab = Window:CreateTab("Sheriff", 4483362458)
-local TrollTab = Window:CreateTab("Troll", 4483362458)
-local MiscTab = Window:CreateTab("Misc", 4483362458)
-
--- [ MAIN TAB ] --
-MainTab:CreateToggle({Name = "Role ESP", CurrentValue = false, Callback = function(V) Settings.RoleESP = V end})
-MainTab:CreateSlider({Name = "WalkSpeed", Range = {16, 150}, Increment = 1, CurrentValue = 16, Callback = function(V) game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = V end})
-
--- [ MURDERER TAB ] --
-MurderTab:CreateToggle({Name = "Kill Aura", CurrentValue = false, Callback = function(V) Settings.KillAura = V end})
-MurderTab:CreateToggle({Name = "Kill All (TP Loop)", CurrentValue = false, Callback = function(V) Settings.KillAll = V end})
-MurderTab:CreateSection("Skins")
-MurderTab:CreateDropdown({
-   Name = "Visual Inventory",
-   Options = GodlyNames,
-   CurrentOption = "Select a Knife",
-   Callback = function(Option)
-       local lp = game.Players.LocalPlayer
-       local knife = lp.Character:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChild("Knife")
-       if knife then
-           local handle = knife:FindFirstChild("Handle") or knife:FindFirstChildOfClass("Part")
-           local mesh = handle and handle:FindFirstChildOfClass("SpecialMesh")
-           if mesh then
-               mesh.MeshId = "rbxassetid://" .. GodlyList[Option].Mesh
-               mesh.TextureId = "rbxassetid://" .. GodlyList[Option].Tex
-               Rayfield:Notify({Title = "Success", Content = "Equipped " .. Option .. " (Visual Only)", Duration = 3})
-           end
-       end
-   end,
-})
-
--- [ SHERIFF TAB ] --
-SheriffTab:CreateButton({
-    Name = "TP to Gun",
-    Callback = function()
-        local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
-        if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then
-            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame * CFrame.new(0, 3, 0)
+-- Logic to create buttons
+local function LoadItems(filter)
+    for _, child in pairs(Scroll:GetChildren()) do if child:IsA("TextButton") then child:Destroy() end end
+    for name, data in pairs(Godlies) do
+        if filter == "" or string.find(string.lower(name), string.lower(filter)) then
+            local b = Instance.new("TextButton", Scroll)
+            b.Size = UDim2.new(1, -10, 0, 40)
+            b.Text = name
+            b.BackgroundColor3 = data.Color
+            b.TextColor3 = Color3.new(1, 1, 1)
+            Instance.new("UICorner", b)
+            
+            b.MouseButton1Click:Connect(function()
+                ItemTitle.Text = name
+                Selection = data
+            end)
         end
     end
-})
+end
 
--- [ TROLL TAB ] --
-TrollTab:CreateButton({
-    Name = "Fling Murderer",
-    Callback = function()
+-- Search functionality
+SearchBar.Changed:Connect(function() LoadItems(SearchBar.Text) end)
+LoadItems("")
+
+-- Equip Logic
+EquipBtn.MouseButton1Click:Connect(function()
+    if Selection then
         local lp = game.Players.LocalPlayer
-        local hrp = lp.Character.HumanoidRootPart
-        local oldPos = hrp.CFrame
-        for _, v in pairs(game.Players:GetPlayers()) do
-            if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
-                hrp.CFrame = v.Character.HumanoidRootPart.CFrame
-                local bV = Instance.new("BodyAngularVelocity", hrp)
-                bV.AngularVelocity = Vector3.new(0, 9999, 0)
-                bV.MaxTorque = Vector3.new(0, math.huge, 0)
-                task.wait(0.3)
-                bV:Destroy()
-                hrp.CFrame = oldPos
+        local knife = lp.Character:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChild("Knife")
+        
+        if knife then
+            local handle = knife:FindFirstChild("Handle") or knife:FindFirstChildOfClass("Part")
+            if handle then
+                local mesh = handle:FindFirstChildOfClass("SpecialMesh") or Instance.new("SpecialMesh", handle)
+                mesh.MeshId = "rbxassetid://" .. Selection.Mesh
+                mesh.TextureId = "rbxassetid://" .. Selection.Tex
+                print("Equipped " .. ItemTitle.Text)
             end
-        end
-    end
-})
-TrollTab:CreateToggle({Name = "Noclip / Ghost", CurrentValue = false, Callback = function(V) Settings.Noclip = V end})
-
--- [ MISC TAB ] --
-MiscTab:CreateToggle({Name = "Auto-Collect Coins", CurrentValue = false, Callback = function(V) Settings.AutoCoin = V; Settings.Noclip = V end})
-MiscTab:CreateButton({Name = "Server Hop", Callback = function() game:GetService("TeleportService"):Teleport(game.PlaceId) end})
-
--- [ ENGINE ] --
-game:GetService("RunService").Stepped:Connect(function()
-    local char = game.Players.LocalPlayer.Character
-    if not char then return end
-
-    if Settings.Noclip then
-        for _, v in pairs(char:GetDescendants()) do if v:IsA("BasePart") then v.CanCollide = false end end
-    end
-
-    if Settings.KillAura and char:FindFirstChild("Knife") then
-        for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= game.Players.LocalPlayer and v.Character and v.Character.Humanoid.Health > 0 then
-                if Settings.KillAll then char.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0) end
-                local k = char:FindFirstChild("Knife")
-                if k:FindFirstChild("Stab") then k.Stab:FireServer() end
-            end
-        end
-    end
-    
-    if Settings.RoleESP then
-        for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= game.Players.LocalPlayer and v.Character then
-                local h = v.Character:FindFirstChild("Highlight") or Instance.new("Highlight", v.Character)
-                if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then h.FillColor = Color3.fromRGB(255, 0, 0)
-                elseif v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then h.FillColor = Color3.fromRGB(0, 0, 255)
-                else h.FillColor = Color3.fromRGB(255, 255, 255) end
-            end
+        else
+            ItemTitle.Text = "HOLD YOUR KNIFE!"
         end
     end
 end)
 
--- Coin Loop
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if Settings.AutoCoin and game.Players.LocalPlayer.Character then
-            local coins = workspace:FindFirstChild("CoinContainer", true)
-            if coins then
-                for _, coin in pairs(coins:GetChildren()) do
-                    if Settings.AutoCoin and coin:IsA("BasePart") then
-                        local hrp = game.Players.LocalPlayer.Character.HumanoidRootPart
-                        local dist = (hrp.Position - coin.Position).Magnitude
-                        local tween = game:GetService("TweenService"):Create(hrp, TweenInfo.new(dist/Settings.CoinSpeed), {CFrame = CFrame.new(coin.Position)})
-                        tween:Play()
-                        tween.Completed:Wait()
-                    end
-                end
-            end
-        end
-    end
-end)
+-- Close Button
+local Close = Instance.new("TextButton", Main)
+Close.Size = UDim2.new(0, 30, 0, 30)
+Close.Position = UDim2.new(1, -35, 0, 2)
+Close.Text = "X"
+Close.BackgroundColor3 = Color3.new(0.6, 0, 0)
+Close.TextColor3 = Color3.new(1, 1, 1)
+Instance.new("UICorner", Close)
+Close.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)

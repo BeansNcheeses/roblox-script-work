@@ -1,81 +1,144 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Chaos Hub",
-   LoadingTitle = "Initializing Systems...",
+   Name = "MM2 Chaos Hub | v21.0",
+   LoadingTitle = "Loading Mega-Systems...",
    LoadingSubtitle = "by Gemini",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "MM2Chaos",
-      FileName = "MainConfig"
-   }
+   ConfigurationSaving = {Enabled = true, FolderName = "MM2Chaos", FileName = "MainConfig"}
 })
 
--- TABS
-local MurderTab = Window:CreateTab("Murderer", 4483362458)
+-- [ SETTINGS & GLOBALS ] --
+_G.Noclip = false
+_G.AutoCoin = false
+_G.ESP = false
+
+-- [ TABS ] --
 local SheriffTab = Window:CreateTab("Sheriff", 4483362458)
-local FlingTab = Window:CreateTab("Fling & Troll", 4483362458)
+local MurderTab = Window:CreateTab("Murderer", 4483362458)
+local TrollTab = Window:CreateTab("Troll & Funny", 4483362458)
 local VisualTab = Window:CreateTab("Visuals", 4483362458)
+local WorldTab = Window:CreateTab("World & Map", 4483362458)
 
--- MURDERER CATEGORY
-MurderTab:CreateSection("Assistance")
-MurderTab:CreateButton({
-   Name = "Knife Reach (Visual)",
-   Callback = function()
-       Rayfield:Notify({Title = "Notice", Content = "Increasing hitbox visualization...", Duration = 3})
-       -- Logic for visual hitbox indicators would go here
-   end,
-})
+-- [ SHERIFF CATEGORY ] --
+SheriffTab:CreateSection("Gun Utilities")
 
--- SHERIFF CATEGORY
-SheriffTab:CreateSection("Justice Tools")
 SheriffTab:CreateButton({
-   Name = "TP to Dropped Gun",
+   Name = "Get Dropped Gun (TP)",
+   Info = "Teleports you directly to the gun if the Sheriff dies.",
    Callback = function()
        local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
        if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then
            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame * CFrame.new(0, 3, 0)
+           Rayfield:Notify({Title = "Gun Secured", Content = "Teleported to the dropped gun!", Duration = 3})
        else
-           Rayfield:Notify({Title = "Error", Content = "Gun not found on floor!", Duration = 3})
+           Rayfield:Notify({Title = "Error", Content = "Gun not found on the floor yet.", Duration = 3})
        end
    end,
 })
 
--- FLING CATEGORY
-FlingTab:CreateSection("Physics Fun")
-FlingTab:CreateToggle({
-   Name = "Anti-AFK",
+SheriffTab:CreateToggle({
+   Name = "Noclip (Walk Through Walls)",
    CurrentValue = false,
    Callback = function(Value)
-       -- Logic to prevent being kicked for idling
+       _G.Noclip = Value
+       if Value then
+           Rayfield:Notify({Title = "Noclip Enabled", Content = "You can now walk through any wall.", Duration = 2})
+       end
    end,
 })
 
--- VISUALS CATEGORY
-VisualTab:CreateSection("World View")
-VisualTab:CreateToggle({
-   Name = "Player ESP",
-   CurrentValue = false,
-   Callback = function(Value)
-       _G.ESP = Value
-       while _G.ESP do
-           task.wait(1)
-           for _, v in pairs(game.Players:GetPlayers()) do
-               if v ~= game.Players.LocalPlayer and v.Character and not v.Character:FindFirstChild("Highlight") then
-                   local hl = Instance.new("Highlight", v.Character)
-                   hl.FillTransparency = 0.5
-                   hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-               end
+SheriffTab:CreateSection("Sheriff Visuals")
+SheriffTab:CreateButton({
+   Name = "Highlight Murderer",
+   Callback = function()
+       for _, v in pairs(game.Players:GetPlayers()) do
+           if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
+               local hl = Instance.new("Highlight", v.Character)
+               hl.FillColor = Color3.fromRGB(255, 0, 0)
+               Rayfield:Notify({Title = "Target Found", Content = v.Name .. " is the Murderer!", Duration = 5})
            end
        end
    end,
 })
 
-VisualTab:CreateButton({
-   Name = "Full Bright",
+-- [ MURDERER CATEGORY ] --
+MurderTab:CreateSection("Skins & Visuals")
+-- Adding the Custom Inventory Logic here
+MurderTab:CreateButton({
+   Name = "Fake Corrupt Knife",
    Callback = function()
-       game:GetService("Lighting").Brightness = 2
-       game:GetService("Lighting").ClockTime = 14
-       game:GetService("Lighting").GlobalShadows = false
+       local lp = game.Players.LocalPlayer
+       local knife = lp.Character:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChild("Knife")
+       if knife then
+           local m = knife.Handle:FindFirstChildOfClass("SpecialMesh")
+           m.MeshId = "rbxassetid://247055041"
+           m.TextureId = "rbxassetid://247055241"
+       end
    end,
+})
+
+-- [ TROLL & FUNNY CATEGORY ] --
+TrollTab:CreateSection("Physics Chaos")
+
+TrollTab:CreateButton({
+   Name = "Fling Murderer",
+   Callback = function()
+       local lp = game.Players.LocalPlayer
+       local hrp = lp.Character.HumanoidRootPart
+       local oldPos = hrp.CFrame
+       for _, v in pairs(game.Players:GetPlayers()) do
+           if v.Character and (v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife")) then
+               hrp.CFrame = v.Character.HumanoidRootPart.CFrame
+               local bV = Instance.new("BodyAngularVelocity", hrp)
+               bV.AngularVelocity = Vector3.new(0, 99999, 0)
+               bV.MaxTorque = Vector3.new(0, math.huge, 0)
+               task.wait(0.4)
+               bV:Destroy()
+               hrp.CFrame = oldPos
+           end
+       end
+   end,
+})
+
+TrollTab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {16, 200},
+   Increment = 1,
+   CurrentValue = 16,
+   Callback = function(Value)
+       game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+   end,
+})
+
+-- [ WORLD & MAP CATEGORY ] --
+WorldTab:CreateSection("Map Teleports")
+WorldTab:CreateButton({Name = "TP to Lobby", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-18, 15, 45) end})
+WorldTab:CreateButton({Name = "TP to Secret Room", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-108, 15, 36) end})
+
+WorldTab:CreateSection("Lighting Settings")
+WorldTab:CreateButton({
+   Name = "Full Bright / No Fog",
+   Callback = function()
+       game.Lighting.Brightness = 2
+       game.Lighting.ClockTime = 14
+       game.Lighting.FogEnd = 999999
+   end,
+})
+
+-- [ THE "ENGINE" ] --
+-- This handles Noclip and other constant loops
+game:GetService("RunService").Stepped:Connect(function()
+   if _G.Noclip and game.Players.LocalPlayer.Character then
+       for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+           if v:IsA("BasePart") then
+               v.CanCollide = false
+           end
+       end
+   end
+end)
+
+Rayfield:Notify({
+   Title = "Hub Loaded",
+   Content = "Welcome to the ultimate MM2 Chaos Hub!",
+   Duration = 5
 })

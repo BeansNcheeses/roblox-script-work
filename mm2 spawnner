@@ -1,8 +1,8 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Mobile Chaos - v9",
-   LoadingTitle = "Sorting Chaos...",
+   Name = "MM2 Mobile Chaos - v8",
+   LoadingTitle = "Mobile Optimization Active",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {Enabled = false},
    KeySystem = false
@@ -12,175 +12,113 @@ local Settings = {
     KillAura = false,
     AuraRange = 25,
     KillAll = false,
-    Noclip = false,
-    RoleESP = false,
-    AutoSheriff = false
+    Noclip = false
 }
 
--- 1. MAIN/GLOBAL TAB
-local MainTab = Window:CreateTab("Main", 4483362458)
-MainTab:CreateSection("Universal Visuals")
+-- COMBAT TAB
+local CombatTab = Window:CreateTab("Combat", 4483362458)
 
-MainTab:CreateToggle({
-   Name = "Role ESP (Murder/Sheriff)",
-   CurrentValue = false,
-   Callback = function(Value) Settings.RoleESP = Value end,
-})
-
-MainTab:CreateButton({
-   Name = "Full Bright / No Fog",
-   Callback = function()
-       game:GetService("Lighting").Brightness = 2
-       game:GetService("Lighting").ClockTime = 14
-       game:GetService("Lighting").FogEnd = 100000
-   end,
-})
-
-MainTab:CreateSlider({
-   Name = "WalkSpeed",
-   Range = {16, 120},
-   Increment = 1,
-   CurrentValue = 16,
-   Callback = function(V) if game.Players.LocalPlayer.Character then game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = V end end,
-})
-
--- 2. MURDERER TAB
-local MurderTab = Window:CreateTab("Murderer", 4483362458)
-MurderTab:CreateSection("Elimination Tools")
-
-MurderTab:CreateToggle({
+CombatTab:CreateToggle({
    Name = "Kill Aura",
    CurrentValue = false,
    Callback = function(Value) Settings.KillAura = Value end,
 })
 
-MurderTab:CreateToggle({
+CombatTab:CreateToggle({
    Name = "KILL ALL (TP Loop)",
    CurrentValue = false,
-   Callback = function(Value) Settings.KillAll = Value end,
-})
-
-MurderTab:CreateButton({
-   Name = "Teleport to Lobby (Escape)",
-   Callback = function()
-       game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(0, 50, 0)
+   Callback = function(Value) 
+       Settings.KillAll = Value 
+       if Value then
+           Settings.KillAura = true -- Auto-enable aura for Kill All
+       end
    end,
 })
 
--- 3. SHERIFF TAB
-local SheriffTab = Window:CreateTab("Sheriff", 4483362458)
-SheriffTab:CreateSection("Protection & Hunting")
+-- UTILITY TAB
+local UtilTab = Window:CreateTab("Utilities", 4483362458)
 
-SheriffTab:CreateButton({
+UtilTab:CreateButton({
    Name = "TP to Dropped Gun",
    Callback = function()
        local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
        if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then
            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame * CFrame.new(0, 3, 0)
+       else
+           Rayfield:Notify({Title = "Error", Content = "Gun not found!", Duration = 2})
        end
    end,
 })
 
-SheriffTab:CreateToggle({
-   Name = "Auto-Aim Murderer",
-   CurrentValue = false,
-   Callback = function(Value) Settings.AutoSheriff = Value end,
-})
-
--- 4. TROLL TAB
-local TrollTab = Window:CreateTab("Troll", 4483362458)
-TrollTab:CreateSection("Physics Fun")
-
-TrollTab:CreateButton({
-   Name = "Extreme Fling (Spin)",
-   Callback = function()
-       local char = game.Players.LocalPlayer.Character
-       if char and char:FindFirstChild("HumanoidRootPart") then
-           local bV = Instance.new("BodyAngularVelocity", char.HumanoidRootPart)
-           bV.AngularVelocity = Vector3.new(0, 999999, 0)
-           bV.MaxTorque = Vector3.new(0, math.huge, 0)
-           task.wait(3)
-           bV:Destroy()
-       end
-   end,
-})
-
-TrollTab:CreateToggle({
+UtilTab:CreateToggle({
    Name = "Ghost Mode (Noclip)",
    CurrentValue = false,
    Callback = function(Value) Settings.Noclip = Value end,
 })
 
-TrollTab:CreateButton({
-   Name = "Headless Visual (Client)",
+-- MOVEMENT TAB
+local MoveTab = Window:CreateTab("Movement", 4483362458)
+
+local Flying = false
+local FlyBtn = MoveTab:CreateButton({
+   Name = "Toggle Fly (Mobile)",
    Callback = function()
-       local char = game.Players.LocalPlayer.Character
-       if char:FindFirstChild("Head") then char.Head.Transparency = 1 end
+       Flying = not Flying
+       local lp = game.Players.LocalPlayer
+       local char = lp.Character
+       local hp = char:WaitForChild("HumanoidRootPart")
+       
+       if Flying then
+           local bv = Instance.new("BodyVelocity", hp)
+           bv.Name = "MobileFlight"
+           bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+           spawn(function()
+               while Flying do
+                   bv.Velocity = workspace.CurrentCamera.CFrame.LookVector * 50
+                   task.wait()
+               end
+               bv:Destroy()
+           end)
+       end
    end,
 })
 
--- 5. MISC TAB
-local MiscTab = Window:CreateTab("Misc", 4483362458)
-
-MiscTab:CreateButton({
-   Name = "Server Hop",
-   Callback = function()
-       game:GetService("TeleportService"):Teleport(game.PlaceId)
-   end,
-})
-
-MiscTab:CreateButton({
-   Name = "Rejoin Server",
-   Callback = function()
-       game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, game.JobId)
-   end,
-})
-
--- CORE LOGIC
+-- CORE ENGINE
 game:GetService("RunService").Stepped:Connect(function()
     local lp = game.Players.LocalPlayer
     local char = lp.Character
     
-    -- Noclip
+    -- NOCLIP LOGIC
     if Settings.Noclip and char then
         for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
         end
     end
 
-    -- Role ESP
-    if Settings.RoleESP then
+    -- KILL ALL / AURA LOGIC
+    if Settings.KillAura and char and char:FindFirstChild("Knife") then
         for _, v in pairs(game.Players:GetPlayers()) do
-            if v ~= lp and v.Character then
-                local h = v.Character:FindFirstChild("Highlight") or Instance.new("Highlight", v.Character)
-                if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
-                    h.FillColor = Color3.fromRGB(255, 0, 0)
-                elseif v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then
-                    h.FillColor = Color3.fromRGB(0, 0, 255)
-                else
-                    h.FillColor = Color3.fromRGB(255, 255, 255)
-                end
-            end
-        end
-    end
-
-    -- Kill All & Sheriff Logic
-    if char and char:FindFirstChild("HumanoidRootPart") then
-        if Settings.KillAll and char:FindFirstChild("Knife") then
-            for _, v in pairs(game.Players:GetPlayers()) do
-                if v ~= lp and v.Character and v.Character.Humanoid.Health > 0 then
-                    char.HumanoidRootPart.CFrame = v.Character.HumanoidRootPart.CFrame * CFrame.new(0, 3, 0)
-                    local k = char:FindFirstChild("Knife")
-                    if k:FindFirstChild("Stab") then k.Stab:FireServer() end
-                    break 
-                end
-            end
-        end
-        
-        if Settings.AutoSheriff and char:FindFirstChild("Gun") then
-            for _, v in pairs(game.Players:GetPlayers()) do
-                if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
-                    workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, v.Character.HumanoidRootPart.Position)
+            if v ~= lp and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 then
+                local targetHRP = v.Character:FindFirstChild("HumanoidRootPart")
+                if targetHRP then
+                    local dist = (char.HumanoidRootPart.Position - targetHRP.Position).Magnitude
+                    
+                    -- If Kill All is ON, TP to them
+                    if Settings.KillAll then
+                        char.HumanoidRootPart.CFrame = targetHRP.CFrame * CFrame.new(0, 3, 0)
+                    end
+                    
+                    -- Attack if in range
+                    if dist <= Settings.AuraRange or Settings.KillAll then
+                        local knife = char:FindFirstChild("Knife")
+                        if knife:FindFirstChild("Stab") then
+                            knife.Stab:FireServer()
+                        end
+                    end
+                    
+                    if Settings.KillAll then break end -- Focus one player at a time for stability
                 end
             end
         end

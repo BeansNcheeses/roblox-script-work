@@ -1,50 +1,66 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 ULTIMATE CHAOS HUB",
-   LoadingTitle = "Giga-Script Initializing...",
+   Name = "MM2 ADVANCED HUB",
+   LoadingTitle = "Syncing Systems...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {Enabled = false}
 })
 
 -- [ GLOBALS ] --
-_G.GlowESP = false
-_G.Noclip = false
-_G.InfJump = false
+local Toggles = {
+    Noclip = false,
+    ESP = false
+}
 
 -- [ TABS ] --
-local MainTab = Window:CreateTab("Main / Roles", 4483362458)
-local VisualsTab = Window:CreateTab("Visuals & ESP", 4483362458)
-local SelfTab = Window:CreateTab("Character", 4483362458)
-local MapTab = Window:CreateTab("Map TPs", 4483362458)
-local ServerTab = Window:CreateTab("Server", 4483362458)
+local SheriffTab = Window:CreateTab("Sheriff", 4483362458)
+local MurderTab = Window:CreateTab("Murderer", 4483362458)
+local WorldTab = Window:CreateTab("World / TP", 4483362458)
+local SelfTab = Window:CreateTab("Self", 4483362458)
 
 -- ==========================================
--- 1. MAIN / ROLES TAB
+-- 1. SHERIFF CATEGORY
 -- ==========================================
-MainTab:CreateSection("Sheriff Tools")
+SheriffTab:CreateSection("Sheriff Utilities")
 
-MainTab:CreateButton({
-   Name = "TP to Dropped Gun",
+SheriffTab:CreateButton({
+   Name = "Locate & TP to Gun",
    Callback = function()
        local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
        if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then
-           game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame * CFrame.new(0, 2, 0)
-           Rayfield:Notify({Title = "Success", Content = "Gun Secured!", Duration = 2})
+           -- Teleport 3 studs above the gun to avoid glitching into the floor
+           game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame * CFrame.new(0, 3, 0)
        else
-           Rayfield:Notify({Title = "Error", Content = "No gun found yet.", Duration = 2})
+           Rayfield:Notify({Title = "Not Found", Content = "The gun isn't on the ground right now.", Duration = 2})
        end
    end,
 })
 
-MainTab:CreateSection("Murderer Tools")
+SheriffTab:CreateButton({
+   Name = "Track Murderer (Highlight)",
+   Callback = function()
+       for _, v in pairs(game.Players:GetPlayers()) do
+           if v.Backpack:FindFirstChild("Knife") or (v.Character and v.Character:FindFirstChild("Knife")) then
+               local h = v.Character:FindFirstChild("Highlight") or Instance.new("Highlight", v.Character)
+               h.FillColor = Color3.fromRGB(255, 0, 0)
+               Rayfield:Notify({Title = "Target Identified", Content = v.Name .. " is the Murderer!", Duration = 5})
+           end
+       end
+   end,
+})
 
-MainTab:CreateButton({
-   Name = "Fake Corrupt Knife",
+-- ==========================================
+-- 2. MURDERER CATEGORY
+-- ==========================================
+MurderTab:CreateSection("Murderer Utilities")
+
+MurderTab:CreateButton({
+   Name = "Equip Fake Godly",
    Callback = function()
        local knife = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool") or game.Players.LocalPlayer.Backpack:FindFirstChild("Knife")
-       if knife then
-           local m = knife.Handle:FindFirstChildOfClass("SpecialMesh")
+       if knife and knife:FindFirstChild("Handle") then
+           local m = knife.Handle:FindFirstChildOfClass("SpecialMesh") or Instance.new("SpecialMesh", knife.Handle)
            m.MeshId = "rbxassetid://247055041"
            m.TextureId = "rbxassetid://247055241"
        end
@@ -52,58 +68,49 @@ MainTab:CreateButton({
 })
 
 -- ==========================================
--- 2. VISUALS & ESP TAB (GLOW EDITION)
+-- 3. WORLD / TP CATEGORY
 -- ==========================================
-VisualsTab:CreateSection("Glow ESP")
+WorldTab:CreateSection("Safe Teleports")
 
-VisualsTab:CreateToggle({
-   Name = "Enable Player Glow",
+WorldTab:CreateButton({
+   Name = "Teleport to Game Map",
+   Callback = function()
+       -- Looks for the active map container in MM2
+       local activeMap = workspace:FindFirstChild("Normal") or workspace:FindFirstChild("Map")
+       if activeMap then
+           local spawnPoint = activeMap:FindFirstChildWhichIsA("BasePart", true)
+           if spawnPoint then
+               game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = spawnPoint.CFrame * CFrame.new(0, 5, 0)
+           end
+       else
+           Rayfield:Notify({Title = "Error", Content = "Active map not found. Are you in a round?", Duration = 3})
+       end
+   end,
+})
+
+WorldTab:CreateButton({
+   Name = "TP to Lobby",
+   Callback = function()
+       game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-18, 15, 45)
+   end,
+})
+
+-- ==========================================
+-- 4. SELF / CHARACTER CATEGORY
+-- ==========================================
+SelfTab:CreateSection("Movement")
+
+SelfTab:CreateToggle({
+   Name = "Noclip",
    CurrentValue = false,
    Callback = function(Value)
-       _G.GlowESP = Value
-       if not Value then
-           for _, v in pairs(game.Players:GetPlayers()) do
-               if v.Character and v.Character:FindFirstChild("GlowHighlight") then
-                   v.Character.GlowHighlight:Destroy()
-               end
-           end
-       end
+       Toggles.Noclip = Value
    end,
 })
-
-VisualsTab:CreateSection("World Visuals")
-
-VisualsTab:CreateButton({
-   Name = "Full Bright / No Fog",
-   Callback = function()
-       game.Lighting.Brightness = 2
-       game.Lighting.ClockTime = 14
-       game.Lighting.FogEnd = 999999
-       for _, v in pairs(game.Lighting:GetDescendants()) do
-           if v:IsA("Atmosphere") then v:Destroy() end
-       end
-   end,
-})
-
-VisualsTab:CreateButton({
-   Name = "X-Ray (Semi-Transparent Walls)",
-   Callback = function()
-       for _, v in pairs(workspace:GetDescendants()) do
-           if v:IsA("BasePart") and not v:IsDescendantOf(game.Players.LocalPlayer.Character) then
-               v.Transparency = 0.5
-           end
-       end
-   end,
-})
-
--- ==========================================
--- 3. CHARACTER TAB
--- ==========================================
-SelfTab:CreateSection("Movement Mods")
 
 SelfTab:CreateSlider({
    Name = "WalkSpeed",
-   Range = {16, 250},
+   Range = {16, 150},
    Increment = 1,
    CurrentValue = 16,
    Callback = function(Value)
@@ -111,90 +118,15 @@ SelfTab:CreateSlider({
    end,
 })
 
-SelfTab:CreateToggle({
-   Name = "Noclip",
-   CurrentValue = false,
-   Callback = function(Value) _G.Noclip = Value end,
-})
-
-SelfTab:CreateToggle({
-   Name = "Infinite Jump",
-   CurrentValue = false,
-   Callback = function(Value) _G.InfJump = Value end,
-})
-
 -- ==========================================
--- 4. MAP TELEPORTS
--- ==========================================
-MapTab:CreateSection("Lobby Locations")
-MapTab:CreateButton({Name = "TP to Voting Area", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-18, 15, 45) end})
-MapTab:CreateButton({Name = "TP to Secret Room", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-108, 15, 36) end})
-
--- ==========================================
--- 5. SERVER TAB
--- ==========================================
-ServerTab:CreateSection("Server Utilities")
-ServerTab:CreateButton({
-   Name = "Rejoin Current Server",
-   Callback = function()
-       game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
-   end,
-})
-
-ServerTab:CreateButton({
-   Name = "Server Hop",
-   Callback = function()
-       -- Basic server hop logic
-       local Servers = game.HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
-       for _, s in pairs(Servers.data) do
-           if s.playing < s.maxPlayers then
-               game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, s.id)
-           end
-       end
-   end,
-})
-
--- ==========================================
--- [ THE ENGINE: BACKGROUND LOOPS ]
+-- [ ENGINE: STABLE LOOPS ]
 -- ==========================================
 game:GetService("RunService").Stepped:Connect(function()
-   -- Noclip Logic
-   if _G.Noclip and game.Players.LocalPlayer.Character then
+   if Toggles.Noclip and game.Players.LocalPlayer.Character then
        for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
            if v:IsA("BasePart") then v.CanCollide = false end
        end
    end
 end)
 
-game:GetService("UserInputService").JumpRequest:Connect(function()
-   -- Inf Jump Logic
-   if _G.InfJump and game.Players.LocalPlayer.Character then
-       game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
-   end
-end)
-
--- Glow ESP Loop
-task.spawn(function()
-   while true do
-       task.wait(1)
-       if _G.GlowESP then
-           for _, v in pairs(game.Players:GetPlayers()) do
-               if v ~= game.Players.LocalPlayer and v.Character then
-                   local h = v.Character:FindFirstChild("GlowHighlight") or Instance.new("Highlight", v.Character)
-                   h.Name = "GlowHighlight"
-                   h.FillTransparency = 0.5
-                   
-                   if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
-                       h.FillColor = Color3.fromRGB(255, 0, 0)
-                   elseif v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then
-                       h.FillColor = Color3.fromRGB(0, 0, 255)
-                   else
-                       h.FillColor = Color3.fromRGB(255, 255, 255)
-                   end
-               end
-           end
-       end
-   end
-end)
-
-Rayfield:Notify({Title = "Loaded!", Content = "Chaos Hub is ready.", Duration = 5})
+Rayfield:Notify({Title = "System Ready", Content = "MM2 Advanced Hub is active.", Duration = 3})

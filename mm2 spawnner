@@ -1,144 +1,85 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Chaos Hub | v21.0",
-   LoadingTitle = "Loading Mega-Systems...",
+   Name = "MM2 Mega Hub | Glow ESP",
+   LoadingTitle = "Loading Chaos...",
    LoadingSubtitle = "by Gemini",
-   ConfigurationSaving = {Enabled = true, FolderName = "MM2Chaos", FileName = "MainConfig"}
+   ConfigurationSaving = {Enabled = false}
 })
 
--- [ SETTINGS & GLOBALS ] --
-_G.Noclip = false
-_G.AutoCoin = false
-_G.ESP = false
-
 -- [ TABS ] --
-local SheriffTab = Window:CreateTab("Sheriff", 4483362458)
-local MurderTab = Window:CreateTab("Murderer", 4483362458)
-local TrollTab = Window:CreateTab("Troll & Funny", 4483362458)
-local VisualTab = Window:CreateTab("Visuals", 4483362458)
-local WorldTab = Window:CreateTab("World & Map", 4483362458)
+local VisualsTab = Window:CreateTab("Visuals", 4483362458)
+local MainTab = Window:CreateTab("Main", 4483362458)
 
--- [ SHERIFF CATEGORY ] --
-SheriffTab:CreateSection("Gun Utilities")
+-- [ VISUALS SECTION ] --
+VisualsTab:CreateSection("Glow ESP (Body Highlight)")
 
-SheriffTab:CreateButton({
-   Name = "Get Dropped Gun (TP)",
-   Info = "Teleports you directly to the gun if the Sheriff dies.",
+VisualsTab:CreateToggle({
+   Name = "Enable Body Glow",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.GlowESP = Value
+       if not Value then
+           -- Clean up highlights when turned off
+           for _, v in pairs(game.Players:GetPlayers()) do
+               if v.Character and v.Character:FindFirstChild("GlowHighlight") then
+                   v.Character.GlowHighlight:Destroy()
+               end
+           end
+       end
+   end,
+})
+
+-- [ MAIN SECTION ] --
+MainTab:CreateSection("Quick Utilities")
+MainTab:CreateButton({
+   Name = "TP to Gun",
    Callback = function()
        local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
        if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then
-           game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame * CFrame.new(0, 3, 0)
-           Rayfield:Notify({Title = "Gun Secured", Content = "Teleported to the dropped gun!", Duration = 3})
-       else
-           Rayfield:Notify({Title = "Error", Content = "Gun not found on the floor yet.", Duration = 3})
+           game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame
        end
    end,
 })
 
-SheriffTab:CreateToggle({
-   Name = "Noclip (Walk Through Walls)",
-   CurrentValue = false,
-   Callback = function(Value)
-       _G.Noclip = Value
-       if Value then
-           Rayfield:Notify({Title = "Noclip Enabled", Content = "You can now walk through any wall.", Duration = 2})
-       end
-   end,
-})
-
-SheriffTab:CreateSection("Sheriff Visuals")
-SheriffTab:CreateButton({
-   Name = "Highlight Murderer",
-   Callback = function()
-       for _, v in pairs(game.Players:GetPlayers()) do
-           if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
-               local hl = Instance.new("Highlight", v.Character)
-               hl.FillColor = Color3.fromRGB(255, 0, 0)
-               Rayfield:Notify({Title = "Target Found", Content = v.Name .. " is the Murderer!", Duration = 5})
-           end
-       end
-   end,
-})
-
--- [ MURDERER CATEGORY ] --
-MurderTab:CreateSection("Skins & Visuals")
--- Adding the Custom Inventory Logic here
-MurderTab:CreateButton({
-   Name = "Fake Corrupt Knife",
-   Callback = function()
-       local lp = game.Players.LocalPlayer
-       local knife = lp.Character:FindFirstChildOfClass("Tool") or lp.Backpack:FindFirstChild("Knife")
-       if knife then
-           local m = knife.Handle:FindFirstChildOfClass("SpecialMesh")
-           m.MeshId = "rbxassetid://247055041"
-           m.TextureId = "rbxassetid://247055241"
-       end
-   end,
-})
-
--- [ TROLL & FUNNY CATEGORY ] --
-TrollTab:CreateSection("Physics Chaos")
-
-TrollTab:CreateButton({
-   Name = "Fling Murderer",
-   Callback = function()
-       local lp = game.Players.LocalPlayer
-       local hrp = lp.Character.HumanoidRootPart
-       local oldPos = hrp.CFrame
-       for _, v in pairs(game.Players:GetPlayers()) do
-           if v.Character and (v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife")) then
-               hrp.CFrame = v.Character.HumanoidRootPart.CFrame
-               local bV = Instance.new("BodyAngularVelocity", hrp)
-               bV.AngularVelocity = Vector3.new(0, 99999, 0)
-               bV.MaxTorque = Vector3.new(0, math.huge, 0)
-               task.wait(0.4)
-               bV:Destroy()
-               hrp.CFrame = oldPos
-           end
-       end
-   end,
-})
-
-TrollTab:CreateSlider({
-   Name = "WalkSpeed",
-   Range = {16, 200},
-   Increment = 1,
-   CurrentValue = 16,
-   Callback = function(Value)
-       game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
-   end,
-})
-
--- [ WORLD & MAP CATEGORY ] --
-WorldTab:CreateSection("Map Teleports")
-WorldTab:CreateButton({Name = "TP to Lobby", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-18, 15, 45) end})
-WorldTab:CreateButton({Name = "TP to Secret Room", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-108, 15, 36) end})
-
-WorldTab:CreateSection("Lighting Settings")
-WorldTab:CreateButton({
-   Name = "Full Bright / No Fog",
-   Callback = function()
-       game.Lighting.Brightness = 2
-       game.Lighting.ClockTime = 14
-       game.Lighting.FogEnd = 999999
-   end,
-})
-
--- [ THE "ENGINE" ] --
--- This handles Noclip and other constant loops
-game:GetService("RunService").Stepped:Connect(function()
-   if _G.Noclip and game.Players.LocalPlayer.Character then
-       for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
-           if v:IsA("BasePart") then
-               v.CanCollide = false
-           end
-       end
-   end
+-- [ ESP ENGINE ] --
+-- This runs in the background to keep the glow updated
+task.spawn(function()
+    while true do
+        task.wait(1) -- Check roles every second
+        if _G.GlowESP then
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v ~= game.Players.LocalPlayer and v.Character then
+                    local char = v.Character
+                    local highlight = char:FindFirstChild("GlowHighlight")
+                    
+                    if not highlight then
+                        highlight = Instance.new("Highlight", char)
+                        highlight.Name = "GlowHighlight"
+                        highlight.FillTransparency = 0.5
+                        highlight.OutlineTransparency = 0
+                    end
+                    
+                    -- Update Color based on Role
+                    if v.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife") then
+                        highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Red for Murderer
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    elseif v.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun") then
+                        highlight.FillColor = Color3.fromRGB(0, 0, 255) -- Blue for Sheriff
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    else
+                        highlight.FillColor = Color3.fromRGB(200, 200, 200) -- Grey for Innocent
+                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                    end
+                end
+            end
+        end
+    end
 end)
 
+-- [ FORCE UI TO LOAD ] --
 Rayfield:Notify({
-   Title = "Hub Loaded",
-   Content = "Welcome to the ultimate MM2 Chaos Hub!",
-   Duration = 5
+    Title = "Hub Loaded",
+    Content = "Menu is now active!",
+    Duration = 5
 })

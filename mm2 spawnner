@@ -1,26 +1,67 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 local Window = Rayfield:CreateWindow({
-   Name = "MM2 Mega Hub | Glow ESP",
-   LoadingTitle = "Loading Chaos...",
+   Name = "MM2 ULTIMATE CHAOS HUB",
+   LoadingTitle = "Giga-Script Initializing...",
    LoadingSubtitle = "by Gemini",
    ConfigurationSaving = {Enabled = false}
 })
 
--- [ TABS ] --
-local VisualsTab = Window:CreateTab("Visuals", 4483362458)
-local MainTab = Window:CreateTab("Main", 4483362458)
+-- [ GLOBALS ] --
+_G.GlowESP = false
+_G.Noclip = false
+_G.InfJump = false
 
--- [ VISUALS SECTION ] --
-VisualsTab:CreateSection("Glow ESP (Body Highlight)")
+-- [ TABS ] --
+local MainTab = Window:CreateTab("Main / Roles", 4483362458)
+local VisualsTab = Window:CreateTab("Visuals & ESP", 4483362458)
+local SelfTab = Window:CreateTab("Character", 4483362458)
+local MapTab = Window:CreateTab("Map TPs", 4483362458)
+local ServerTab = Window:CreateTab("Server", 4483362458)
+
+-- ==========================================
+-- 1. MAIN / ROLES TAB
+-- ==========================================
+MainTab:CreateSection("Sheriff Tools")
+
+MainTab:CreateButton({
+   Name = "TP to Dropped Gun",
+   Callback = function()
+       local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
+       if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then
+           game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame * CFrame.new(0, 2, 0)
+           Rayfield:Notify({Title = "Success", Content = "Gun Secured!", Duration = 2})
+       else
+           Rayfield:Notify({Title = "Error", Content = "No gun found yet.", Duration = 2})
+       end
+   end,
+})
+
+MainTab:CreateSection("Murderer Tools")
+
+MainTab:CreateButton({
+   Name = "Fake Corrupt Knife",
+   Callback = function()
+       local knife = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Tool") or game.Players.LocalPlayer.Backpack:FindFirstChild("Knife")
+       if knife then
+           local m = knife.Handle:FindFirstChildOfClass("SpecialMesh")
+           m.MeshId = "rbxassetid://247055041"
+           m.TextureId = "rbxassetid://247055241"
+       end
+   end,
+})
+
+-- ==========================================
+-- 2. VISUALS & ESP TAB (GLOW EDITION)
+-- ==========================================
+VisualsTab:CreateSection("Glow ESP")
 
 VisualsTab:CreateToggle({
-   Name = "Enable Body Glow",
+   Name = "Enable Player Glow",
    CurrentValue = false,
    Callback = function(Value)
        _G.GlowESP = Value
        if not Value then
-           -- Clean up highlights when turned off
            for _, v in pairs(game.Players:GetPlayers()) do
                if v.Character and v.Character:FindFirstChild("GlowHighlight") then
                    v.Character.GlowHighlight:Destroy()
@@ -30,56 +71,130 @@ VisualsTab:CreateToggle({
    end,
 })
 
--- [ MAIN SECTION ] --
-MainTab:CreateSection("Quick Utilities")
-MainTab:CreateButton({
-   Name = "TP to Gun",
+VisualsTab:CreateSection("World Visuals")
+
+VisualsTab:CreateButton({
+   Name = "Full Bright / No Fog",
    Callback = function()
-       local gun = workspace:FindFirstChild("GunDrop") or workspace:FindFirstChild("Handle", true)
-       if gun and (gun.Name == "GunDrop" or gun.Parent.Name == "GunDrop") then
-           game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = gun.CFrame
+       game.Lighting.Brightness = 2
+       game.Lighting.ClockTime = 14
+       game.Lighting.FogEnd = 999999
+       for _, v in pairs(game.Lighting:GetDescendants()) do
+           if v:IsA("Atmosphere") then v:Destroy() end
        end
    end,
 })
 
--- [ ESP ENGINE ] --
--- This runs in the background to keep the glow updated
-task.spawn(function()
-    while true do
-        task.wait(1) -- Check roles every second
-        if _G.GlowESP then
-            for _, v in pairs(game.Players:GetPlayers()) do
-                if v ~= game.Players.LocalPlayer and v.Character then
-                    local char = v.Character
-                    local highlight = char:FindFirstChild("GlowHighlight")
-                    
-                    if not highlight then
-                        highlight = Instance.new("Highlight", char)
-                        highlight.Name = "GlowHighlight"
-                        highlight.FillTransparency = 0.5
-                        highlight.OutlineTransparency = 0
-                    end
-                    
-                    -- Update Color based on Role
-                    if v.Backpack:FindFirstChild("Knife") or char:FindFirstChild("Knife") then
-                        highlight.FillColor = Color3.fromRGB(255, 0, 0) -- Red for Murderer
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    elseif v.Backpack:FindFirstChild("Gun") or char:FindFirstChild("Gun") then
-                        highlight.FillColor = Color3.fromRGB(0, 0, 255) -- Blue for Sheriff
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    else
-                        highlight.FillColor = Color3.fromRGB(200, 200, 200) -- Grey for Innocent
-                        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                    end
-                end
-            end
-        end
-    end
+VisualsTab:CreateButton({
+   Name = "X-Ray (Semi-Transparent Walls)",
+   Callback = function()
+       for _, v in pairs(workspace:GetDescendants()) do
+           if v:IsA("BasePart") and not v:IsDescendantOf(game.Players.LocalPlayer.Character) then
+               v.Transparency = 0.5
+           end
+       end
+   end,
+})
+
+-- ==========================================
+-- 3. CHARACTER TAB
+-- ==========================================
+SelfTab:CreateSection("Movement Mods")
+
+SelfTab:CreateSlider({
+   Name = "WalkSpeed",
+   Range = {16, 250},
+   Increment = 1,
+   CurrentValue = 16,
+   Callback = function(Value)
+       game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+   end,
+})
+
+SelfTab:CreateToggle({
+   Name = "Noclip",
+   CurrentValue = false,
+   Callback = function(Value) _G.Noclip = Value end,
+})
+
+SelfTab:CreateToggle({
+   Name = "Infinite Jump",
+   CurrentValue = false,
+   Callback = function(Value) _G.InfJump = Value end,
+})
+
+-- ==========================================
+-- 4. MAP TELEPORTS
+-- ==========================================
+MapTab:CreateSection("Lobby Locations")
+MapTab:CreateButton({Name = "TP to Voting Area", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-18, 15, 45) end})
+MapTab:CreateButton({Name = "TP to Secret Room", Callback = function() game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(-108, 15, 36) end})
+
+-- ==========================================
+-- 5. SERVER TAB
+-- ==========================================
+ServerTab:CreateSection("Server Utilities")
+ServerTab:CreateButton({
+   Name = "Rejoin Current Server",
+   Callback = function()
+       game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
+   end,
+})
+
+ServerTab:CreateButton({
+   Name = "Server Hop",
+   Callback = function()
+       -- Basic server hop logic
+       local Servers = game.HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"))
+       for _, s in pairs(Servers.data) do
+           if s.playing < s.maxPlayers then
+               game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, s.id)
+           end
+       end
+   end,
+})
+
+-- ==========================================
+-- [ THE ENGINE: BACKGROUND LOOPS ]
+-- ==========================================
+game:GetService("RunService").Stepped:Connect(function()
+   -- Noclip Logic
+   if _G.Noclip and game.Players.LocalPlayer.Character then
+       for _, v in pairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+           if v:IsA("BasePart") then v.CanCollide = false end
+       end
+   end
 end)
 
--- [ FORCE UI TO LOAD ] --
-Rayfield:Notify({
-    Title = "Hub Loaded",
-    Content = "Menu is now active!",
-    Duration = 5
-})
+game:GetService("UserInputService").JumpRequest:Connect(function()
+   -- Inf Jump Logic
+   if _G.InfJump and game.Players.LocalPlayer.Character then
+       game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+   end
+end)
+
+-- Glow ESP Loop
+task.spawn(function()
+   while true do
+       task.wait(1)
+       if _G.GlowESP then
+           for _, v in pairs(game.Players:GetPlayers()) do
+               if v ~= game.Players.LocalPlayer and v.Character then
+                   local h = v.Character:FindFirstChild("GlowHighlight") or Instance.new("Highlight", v.Character)
+                   h.Name = "GlowHighlight"
+                   h.FillTransparency = 0.5
+                   
+                   if v.Backpack:FindFirstChild("Knife") or v.Character:FindFirstChild("Knife") then
+                       h.FillColor = Color3.fromRGB(255, 0, 0)
+                   elseif v.Backpack:FindFirstChild("Gun") or v.Character:FindFirstChild("Gun") then
+                       h.FillColor = Color3.fromRGB(0, 0, 255)
+                   else
+                       h.FillColor = Color3.fromRGB(255, 255, 255)
+                   end
+               end
+           end
+       end
+   end
+end)
+
+Rayfield:Notify({Title = "Loaded!", Content = "Chaos Hub is ready.", Duration = 5})

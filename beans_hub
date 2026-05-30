@@ -1,0 +1,2232 @@
+-- Delta Shooter Hub v1.0
+-- Using Rayfield UI Library
+-- Compatible with Delta Executor
+
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
+
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local Camera = Workspace.CurrentCamera
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+
+-- Configuration
+local Config = {
+    ESP = {
+        Enabled = false,
+        Box = false,
+        BoxFilled = false,
+        BoxColor = Color3.fromRGB(255, 0, 0),
+        BoxFillColor = Color3.fromRGB(255, 0, 0),
+        BoxFillTransparency = 0.5,
+        Highlight = false,
+        HighlightColor = Color3.fromRGB(255, 0, 0),
+        HighlightFillTransparency = 0.5,
+        Tracers = false,
+        TracerColor = Color3.fromRGB(255, 0, 0),
+        TracerOrigin = "Bottom",
+        NameESP = false,
+        NameColor = Color3.fromRGB(255, 255, 255),
+        DistanceESP = false,
+        HealthESP = false,
+        HealthBar = false,
+        HealthBarSide = "Left",
+        WeaponESP = false,
+        SkeletonESP = false,
+        SkeletonColor = Color3.fromRGB(255, 255, 255),
+        Chams = false,
+        ChamsColor = Color3.fromRGB(255, 0, 0),
+        TeamCheck = true,
+        VisibleCheck = true,
+        MaxDistance = 1000
+    },
+    Aimbot = {
+        Enabled = false,
+        Key = "MouseButton2",
+        Mode = "Camera",
+        TargetPart = "Head",
+        Smoothness = 0.1,
+        FOV = 100,
+        ShowFOV = true,
+        FOVColor = Color3.fromRGB(255, 255, 255),
+        FOVFilled = false,
+        TeamCheck = true,
+        VisibleCheck = true,
+        WallCheck = true,
+        Prediction = false,
+        PredictionAmount = 0.165,
+        DropCompensation = false,
+        DropAmount = 0,
+        DynamicFOV = false,
+        MultiTarget = false,
+        TargetDelay = 0,
+        AutoFire = false,
+        TriggerBot = false,
+        TargetNPCs = false,
+        LockTarget = false
+    },
+    Weapon = {
+        NoRecoil = false,
+        NoSpread = false,
+        NoSway = false,
+        InstantReload = false,
+        RapidFire = false,
+        RapidFireSpeed = 0.01,
+        InfiniteAmmo = false,
+        InfiniteMag = false,
+        AutoReload = false,
+        DamageMultiplier = 1,
+        FireRateMultiplier = 1,
+        NoMuzzleFlash = false,
+        NoShells = false,
+        SilentAim = false,
+        SilentAimChance = 100,
+        WallBang = false,
+        HeadshotMultiplier = 1,
+        InstantEquip = false,
+        FullAuto = false
+    },
+    Player = {
+        SpeedHack = false,
+        SpeedValue = 16,
+        JumpPower = false,
+        JumpValue = 50,
+        InfiniteJump = false,
+        Fly = false,
+        FlySpeed = 50,
+        NoClip = false,
+        GodMode = false,
+        AntiAim = false,
+        SpinBot = false,
+        SpinSpeed = 20,
+        FakeLag = false,
+        LagAmount = 0.1,
+        BHop = false,
+        AutoStrafe = false,
+        AutoStrafeAngle = 45,
+        ThirdPerson = false,
+        ThirdPersonDistance = 10,
+        FreeCam = false,
+        FreeCamSpeed = 1
+    },
+    Visual = {
+        FullBright = false,
+        NoFog = false,
+        NoSmoke = false,
+        NoFlash = false,
+        NoScope = false,
+        CustomCrosshair = false,
+        CrosshairColor = Color3.fromRGB(255, 255, 255),
+        CrosshairSize = 10,
+        CrosshairThickness = 2,
+        CustomScope = false,
+        ScopeColor = Color3.fromRGB(0, 255, 0),
+        FieldOfView = 70,
+        CustomFOV = false,
+        RemoveTextures = false,
+        Wireframe = false,
+        RainbowMode = false,
+        NightVision = false,
+        ThermalVision = false,
+        XRay = false
+    },
+    Misc = {
+        AutoFarm = false,
+        AutoKill = false,
+        KillAura = false,
+        KillAuraRange = 15,
+        AutoParry = false,
+        HitboxExpander = false,
+        HitboxSize = 10,
+        AntiAFK = false,
+        AutoCollect = false,
+        AutoLoot = false,
+        AutoHeal = false,
+        HealThreshold = 50,
+        AutoArmor = false,
+        Radar = false,
+        RadarSize = 200,
+        SpectatorList = false,
+        PlayerList = false
+    },
+    Settings = {
+        UITheme = "Default",
+        UIToggle = "RightShift",
+        Notifications = true,
+        StreamerMode = false,
+        HideName = false,
+        CustomName = "Anonymous",
+        SaveConfig = true
+    }
+}
+
+-- ESP Objects Storage
+local ESPObjects = {}
+local TracerObjects = {}
+local FOV_Circle = nil
+local CrosshairLines = {}
+local RadarFrame = nil
+
+-- Create Window
+local Window = Rayfield:CreateWindow({
+    Name = "Delta Shooter Hub",
+    LoadingTitle = "Delta Shooter Hub",
+    LoadingSubtitle = "by You",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "DeltaHub",
+        FileName = "ShooterConfig"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "",
+        RememberJoins = true
+    },
+    KeySystem = false
+})
+
+-- Tabs
+local ESPTab = Window:CreateTab("ESP", "eye")
+local AimbotTab = Window:CreateTab("Aimbot", "crosshair")
+local WeaponTab = Window:CreateTab("Weapon", "sword")
+local PlayerTab = Window:CreateTab("Player", "user")
+local VisualTab = Window:CreateTab("Visual", "sun")
+local MiscTab = Window:CreateTab("Misc", "settings")
+local SettingsTab = Window:CreateTab("Settings", "sliders")
+
+-- ESP Functions
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    
+    local espData = {
+        Player = player,
+        Box = nil,
+        BoxFill = nil,
+        Tracer = nil,
+        Name = nil,
+        Distance = nil,
+        HealthBar = nil,
+        HealthBarBG = nil,
+        Weapon = nil,
+        Skeleton = {},
+        Highlight = nil,
+        Chams = nil,
+        Connections = {}
+    }
+    
+    -- Box ESP
+    espData.Box = Drawing.new("Quad")
+    espData.Box.Thickness = 1
+    espData.Box.Color = Config.ESP.BoxColor
+    espData.Box.Filled = false
+    espData.Box.Visible = false
+    
+    -- Box Fill
+    espData.BoxFill = Drawing.new("Quad")
+    espData.BoxFill.Thickness = 0
+    espData.BoxFill.Color = Config.ESP.BoxFillColor
+    espData.BoxFill.Filled = true
+    espData.BoxFill.Transparency = Config.ESP.BoxFillTransparency
+    espData.BoxFill.Visible = false
+    
+    -- Tracer
+    espData.Tracer = Drawing.new("Line")
+    espData.Tracer.Thickness = 1
+    espData.Tracer.Color = Config.ESP.TracerColor
+    espData.Tracer.Visible = false
+    
+    -- Name
+    espData.Name = Drawing.new("Text")
+    espData.Name.Size = 14
+    espData.Name.Center = true
+    espData.Name.Outline = true
+    espData.Name.Color = Config.ESP.NameColor
+    espData.Name.Visible = false
+    
+    -- Distance
+    espData.Distance = Drawing.new("Text")
+    espData.Distance.Size = 12
+    espData.Distance.Center = true
+    espData.Distance.Outline = true
+    espData.Distance.Color = Color3.fromRGB(255, 255, 255)
+    espData.Distance.Visible = false
+    
+    -- Health Bar
+    espData.HealthBarBG = Drawing.new("Square")
+    espData.HealthBarBG.Thickness = 1
+    espData.HealthBarBG.Filled = true
+    espData.HealthBarBG.Color = Color3.fromRGB(0, 0, 0)
+    espData.HealthBarBG.Visible = false
+    
+    espData.HealthBar = Drawing.new("Square")
+    espData.HealthBar.Thickness = 1
+    espData.HealthBar.Filled = true
+    espData.HealthBar.Color = Color3.fromRGB(0, 255, 0)
+    espData.HealthBar.Visible = false
+    
+    -- Weapon
+    espData.Weapon = Drawing.new("Text")
+    espData.Weapon.Size = 12
+    espData.Weapon.Center = true
+    espData.Weapon.Outline = true
+    espData.Weapon.Color = Color3.fromRGB(255, 255, 0)
+    espData.Weapon.Visible = false
+    
+    -- Skeleton
+    for i = 1, 12 do
+        local line = Drawing.new("Line")
+        line.Thickness = 1
+        line.Color = Config.ESP.SkeletonColor
+        line.Visible = false
+        table.insert(espData.Skeleton, line)
+    end
+    
+    -- Highlight (if character exists)
+    local function SetupHighlight()
+        if player.Character then
+            local highlight = Instance.new("Highlight")
+            highlight.FillColor = Config.ESP.HighlightColor
+            highlight.OutlineColor = Config.ESP.HighlightColor
+            highlight.FillTransparency = Config.ESP.HighlightFillTransparency
+            highlight.OutlineTransparency = 0
+            highlight.Parent = player.Character
+            espData.Highlight = highlight
+        end
+    end
+    
+    -- Chams
+    local function SetupChams()
+        if player.Character then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    local cham = Instance.new("BoxHandleAdornment")
+                    cham.Size = part.Size
+                    cham.AlwaysOnTop = true
+                    cham.ZIndex = 5
+                    cham.Adornee = part
+                    cham.Color3 = Config.ESP.ChamsColor
+                    cham.Transparency = 0.5
+                    cham.Parent = part
+                    if not espData.Chams then espData.Chams = {} end
+                    table.insert(espData.Chams, cham)
+                end
+            end
+        end
+    end
+    
+    ESPObjects[player] = espData
+end
+
+local function RemoveESP(player)
+    local espData = ESPObjects[player]
+    if not espData then return end
+    
+    -- Remove Drawing objects
+    if espData.Box then espData.Box:Remove() end
+    if espData.BoxFill then espData.BoxFill:Remove() end
+    if espData.Tracer then espData.Tracer:Remove() end
+    if espData.Name then espData.Name:Remove() end
+    if espData.Distance then espData.Distance:Remove() end
+    if espData.HealthBar then espData.HealthBar:Remove() end
+    if espData.HealthBarBG then espData.HealthBarBG:Remove() end
+    if espData.Weapon then espData.Weapon:Remove() end
+    
+    for _, line in pairs(espData.Skeleton) do
+        line:Remove()
+    end
+    
+    -- Remove Highlight
+    if espData.Highlight then
+        espData.Highlight:Destroy()
+    end
+    
+    -- Remove Chams
+    if espData.Chams then
+        for _, cham in pairs(espData.Chams) do
+            cham:Destroy()
+        end
+    end
+    
+    -- Disconnect connections
+    for _, conn in pairs(espData.Connections) do
+        conn:Disconnect()
+    end
+    
+    ESPObjects[player] = nil
+end
+
+local function UpdateESP()
+    for player, espData in pairs(ESPObjects) do
+        if not player or not player.Parent then
+            RemoveESP(player)
+            continue
+        end
+        
+        local character = player.Character
+        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+        local head = character and character:FindFirstChild("Head")
+        
+        if not character or not humanoid or not rootPart or not head then
+            -- Hide all ESP elements
+            espData.Box.Visible = false
+            espData.BoxFill.Visible = false
+            espData.Tracer.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarBG.Visible = false
+            espData.Weapon.Visible = false
+            for _, line in pairs(espData.Skeleton) do
+                line.Visible = false
+            end
+            continue
+        end
+        
+        -- Team Check
+        if Config.ESP.TeamCheck and player.Team == LocalPlayer.Team then
+            espData.Box.Visible = false
+            espData.BoxFill.Visible = false
+            espData.Tracer.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarBG.Visible = false
+            espData.Weapon.Visible = false
+            for _, line in pairs(espData.Skeleton) do
+                line.Visible = false
+            end
+            continue
+        end
+        
+        -- Distance Check
+        local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
+        if distance > Config.ESP.MaxDistance then
+            espData.Box.Visible = false
+            espData.BoxFill.Visible = false
+            espData.Tracer.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarBG.Visible = false
+            espData.Weapon.Visible = false
+            for _, line in pairs(espData.Skeleton) do
+                line.Visible = false
+            end
+            continue
+        end
+        
+        -- Visibility Check
+        if Config.ESP.VisibleCheck then
+            local ray = Ray.new(Camera.CFrame.Position, (head.Position - Camera.CFrame.Position).Unit * distance)
+            local hit = Workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character, character})
+            if hit and hit:IsDescendantOf(character) == false then
+                espData.Box.Visible = false
+                espData.BoxFill.Visible = false
+                espData.Tracer.Visible = false
+                espData.Name.Visible = false
+                espData.Distance.Visible = false
+                espData.HealthBar.Visible = false
+                espData.HealthBarBG.Visible = false
+                espData.Weapon.Visible = false
+                for _, line in pairs(espData.Skeleton) do
+                    line.Visible = false
+                end
+                continue
+            end
+        end
+        
+        -- Get screen positions
+        local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
+        local rootPos, rootOnScreen = Camera:WorldToViewportPoint(rootPart.Position)
+        local legPos = Camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3, 0))
+        
+        if not headOnScreen then
+            espData.Box.Visible = false
+            espData.BoxFill.Visible = false
+            espData.Tracer.Visible = false
+            espData.Name.Visible = false
+            espData.Distance.Visible = false
+            espData.HealthBar.Visible = false
+            espData.HealthBarBG.Visible = false
+            espData.Weapon.Visible = false
+            for _, line in pairs(espData.Skeleton) do
+                line.Visible = false
+            end
+            continue
+        end
+        
+        local boxHeight = math.abs(headPos.Y - legPos.Y)
+        local boxWidth = boxHeight / 2
+        local boxTop = Vector2.new(headPos.X - boxWidth / 2, headPos.Y)
+        local boxBottom = Vector2.new(headPos.X + boxWidth / 2, legPos.Y)
+        
+        -- Box ESP
+        if Config.ESP.Box then
+            espData.Box.PointA = Vector2.new(boxTop.X, boxTop.Y)
+            espData.Box.PointB = Vector2.new(boxBottom.X, boxTop.Y)
+            espData.Box.PointC = Vector2.new(boxBottom.X, boxBottom.Y)
+            espData.Box.PointD = Vector2.new(boxTop.X, boxBottom.Y)
+            espData.Box.Color = Config.ESP.BoxColor
+            espData.Box.Visible = true
+            
+            if Config.ESP.BoxFilled then
+                espData.BoxFill.PointA = espData.Box.PointA
+                espData.BoxFill.PointB = espData.Box.PointB
+                espData.BoxFill.PointC = espData.Box.PointC
+                espData.BoxFill.PointD = espData.Box.PointD
+                espData.BoxFill.Color = Config.ESP.BoxFillColor
+                espData.BoxFill.Transparency = Config.ESP.BoxFillTransparency
+                espData.BoxFill.Visible = true
+            else
+                espData.BoxFill.Visible = false
+            end
+        else
+            espData.Box.Visible = false
+            espData.BoxFill.Visible = false
+        end
+        
+        -- Tracers
+        if Config.ESP.Tracers then
+            local origin = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+            if Config.ESP.TracerOrigin == "Mouse" then
+                origin = Vector2.new(Mouse.X, Mouse.Y)
+            elseif Config.ESP.TracerOrigin == "Center" then
+                origin = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+            end
+            espData.Tracer.From = origin
+            espData.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
+            espData.Tracer.Color = Config.ESP.TracerColor
+            espData.Tracer.Visible = true
+        else
+            espData.Tracer.Visible = false
+        end
+        
+        -- Name ESP
+        if Config.ESP.NameESP then
+            local displayName = Config.Settings.StreamerMode and "Player" or player.DisplayName
+            espData.Name.Text = displayName
+            espData.Name.Position = Vector2.new(headPos.X, headPos.Y - 25)
+            espData.Name.Color = Config.ESP.NameColor
+            espData.Name.Visible = true
+        else
+            espData.Name.Visible = false
+        end
+        
+        -- Distance ESP
+        if Config.ESP.DistanceESP then
+            espData.Distance.Text = math.floor(distance) .. "m"
+            espData.Distance.Position = Vector2.new(rootPos.X, legPos.Y + 5)
+            espData.Distance.Visible = true
+        else
+            espData.Distance.Visible = false
+        end
+        
+        -- Health Bar
+        if Config.ESP.HealthBar then
+            local healthPercent = humanoid.Health / humanoid.MaxHealth
+            local barHeight = boxHeight
+            local barWidth = 3
+            
+            local barX = boxTop.X - 8
+            if Config.ESP.HealthBarSide == "Right" then
+                barX = boxBottom.X + 5
+            end
+            
+            espData.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
+            espData.HealthBarBG.Position = Vector2.new(barX, boxTop.Y)
+            espData.HealthBarBG.Visible = true
+            
+            espData.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
+            espData.HealthBar.Position = Vector2.new(barX, boxTop.Y + barHeight * (1 - healthPercent))
+            espData.HealthBar.Color = Color3.fromRGB(255 * (1 - healthPercent), 255 * healthPercent, 0)
+            espData.HealthBar.Visible = true
+        else
+            espData.HealthBar.Visible = false
+            espData.HealthBarBG.Visible = false
+        end
+        
+        -- Health ESP Text
+        if Config.ESP.HealthESP then
+            if not Config.ESP.NameESP then
+                espData.Name.Text = math.floor(humanoid.Health) .. " HP"
+                espData.Name.Position = Vector2.new(headPos.X, headPos.Y - 25)
+                espData.Name.Color = Color3.fromRGB(255, 255, 255)
+                espData.Name.Visible = true
+            else
+                espData.Name.Text = displayName .. " [" .. math.floor(humanoid.Health) .. " HP]"
+            end
+        end
+        
+        -- Weapon ESP
+        if Config.ESP.WeaponESP then
+            local tool = character:FindFirstChildOfClass("Tool")
+            local weaponName = tool and tool.Name or "None"
+            espData.Weapon.Text = weaponName
+            espData.Weapon.Position = Vector2.new(rootPos.X, legPos.Y + (Config.ESP.DistanceESP and 20 or 5))
+            espData.Weapon.Visible = true
+        else
+            espData.Weapon.Visible = false
+        end
+        
+        -- Skeleton ESP
+        if Config.ESP.SkeletonESP then
+            -- Simplified skeleton - would need proper rig mapping for full skeleton
+            local function drawBone(p1, p2, lineIndex)
+                if p1 and p2 then
+                    local pos1 = Camera:WorldToViewportPoint(p1.Position)
+                    local pos2 = Camera:WorldToViewportPoint(p2.Position)
+                    if pos1.Z > 0 and pos2.Z > 0 then
+                        espData.Skeleton[lineIndex].From = Vector2.new(pos1.X, pos1.Y)
+                        espData.Skeleton[lineIndex].To = Vector2.new(pos2.X, pos2.Y)
+                        espData.Skeleton[lineIndex].Color = Config.ESP.SkeletonColor
+                        espData.Skeleton[lineIndex].Visible = true
+                    else
+                        espData.Skeleton[lineIndex].Visible = false
+                    end
+                end
+            end
+            
+            -- Draw basic skeleton
+            if head and rootPart then
+                drawBone(head, rootPart, 1)
+            end
+            -- Additional bones would be mapped here based on rig
+        else
+            for _, line in pairs(espData.Skeleton) do
+                line.Visible = false
+            end
+        end
+        
+        -- Highlight
+        if Config.ESP.Highlight then
+            if not espData.Highlight or espData.Highlight.Parent == nil then
+                SetupHighlight()
+            end
+            if espData.Highlight then
+                espData.Highlight.FillColor = Config.ESP.HighlightColor
+                espData.Highlight.FillTransparency = Config.ESP.HighlightFillTransparency
+            end
+        elseif espData.Highlight then
+            espData.Highlight:Destroy()
+            espData.Highlight = nil
+        end
+        
+        -- Chams
+        if Config.ESP.Chams then
+            if not espData.Chams then
+                SetupChams()
+            end
+            if espData.Chams then
+                for _, cham in pairs(espData.Chams) do
+                    cham.Color3 = Config.ESP.ChamsColor
+                end
+            end
+        elseif espData.Chams then
+            for _, cham in pairs(espData.Chams) do
+                cham:Destroy()
+            end
+            espData.Chams = nil
+        end
+    end
+end
+
+-- Aimbot Functions
+local function GetClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = Config.Aimbot.FOV
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            -- Team Check
+            if Config.Aimbot.TeamCheck and player.Team == LocalPlayer.Team then
+                continue
+            end
+            
+            local targetPart = player.Character:FindFirstChild(Config.Aimbot.TargetPart)
+            if not targetPart then
+                targetPart = player.Character:FindFirstChild("Head")
+            end
+            
+            if not targetPart then continue end
+            
+            -- Visibility Check
+            if Config.Aimbot.VisibleCheck then
+                local ray = Ray.new(Camera.CFrame.Position, (targetPart.Position - Camera.CFrame.Position).Unit * 1000)
+                local hit = Workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character, player.Character})
+                if hit and hit:IsDescendantOf(player.Character) == false then
+                    continue
+                end
+            end
+            
+            local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+            if onScreen then
+                local distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                if distance < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
+    
+    return closestPlayer
+end
+
+local function AimAt(target)
+    if not target or not target.Character then return end
+    
+    local targetPart = target.Character:FindFirstChild(Config.Aimbot.TargetPart) or target.Character:FindFirstChild("Head")
+    if not targetPart then return end
+    
+    local targetPos = targetPart.Position
+    
+    -- Prediction
+    if Config.Aimbot.Prediction and targetPart.AssemblyLinearVelocity then
+        targetPos = targetPos + (targetPart.AssemblyLinearVelocity * Config.Aimbot.PredictionAmount)
+    end
+    
+    -- Drop Compensation (simplified)
+    if Config.Aimbot.DropCompensation then
+        local distance = (targetPos - Camera.CFrame.Position).Magnitude
+        targetPos = targetPos + Vector3.new(0, distance * Config.Aimbot.DropAmount * 0.001, 0)
+    end
+    
+    local cameraCF = CFrame.new(Camera.CFrame.Position, targetPos)
+    
+    if Config.Aimbot.Mode == "Instant" then
+        Camera.CFrame = cameraCF
+    elseif Config.Aimbot.Mode == "Camera" then
+        Camera.CFrame = Camera.CFrame:Lerp(cameraCF, Config.Aimbot.Smoothness)
+    elseif Config.Aimbot.Mode == "Mouse" then
+        local pos = Camera:WorldToViewportPoint(targetPos)
+        mousemoverel((pos.X - Mouse.X) * Config.Aimbot.Smoothness, (pos.Y - Mouse.Y) * Config.Aimbot.Smoothness)
+    end
+end
+
+-- FOV Circle
+local function CreateFOVCircle()
+    if FOV_Circle then FOV_Circle:Remove() end
+    
+    FOV_Circle = Drawing.new("Circle")
+    FOV_Circle.Thickness = 1
+    FOV_Circle.NumSides = 64
+    FOV_Circle.Radius = Config.Aimbot.FOV
+    FOV_Circle.Filled = Config.Aimbot.FOVFilled
+    FOV_Circle.Visible = Config.Aimbot.ShowFOV
+    FOV_Circle.Color = Config.Aimbot.FOVColor
+    FOV_Circle.Transparency = 0.5
+end
+
+-- Crosshair
+local function CreateCrosshair()
+    for _, line in pairs(CrosshairLines) do
+        line:Remove()
+    end
+    CrosshairLines = {}
+    
+    if Config.Visual.CustomCrosshair then
+        local centerX = Camera.ViewportSize.X / 2
+        local centerY = Camera.ViewportSize.Y / 2
+        local size = Config.Visual.CrosshairSize
+        local thickness = Config.Visual.CrosshairThickness
+        
+        -- Top
+        local top = Drawing.new("Line")
+        top.Thickness = thickness
+        top.Color = Config.Visual.CrosshairColor
+        top.From = Vector2.new(centerX, centerY - size - 2)
+        top.To = Vector2.new(centerX, centerY - 2)
+        top.Visible = true
+        table.insert(CrosshairLines, top)
+        
+        -- Bottom
+        local bottom = Drawing.new("Line")
+        bottom.Thickness = thickness
+        bottom.Color = Config.Visual.CrosshairColor
+        bottom.From = Vector2.new(centerX, centerY + 2)
+        bottom.To = Vector2.new(centerX, centerY + size + 2)
+        bottom.Visible = true
+        table.insert(CrosshairLines, bottom)
+        
+        -- Left
+        local left = Drawing.new("Line")
+        left.Thickness = thickness
+        left.Color = Config.Visual.CrosshairColor
+        left.From = Vector2.new(centerX - size - 2, centerY)
+        left.To = Vector2.new(centerX - 2, centerY)
+        left.Visible = true
+        table.insert(CrosshairLines, left)
+        
+        -- Right
+        local right = Drawing.new("Line")
+        right.Thickness = thickness
+        right.Color = Config.Visual.CrosshairColor
+        right.From = Vector2.new(centerX + 2, centerY)
+        right.To = Vector2.new(centerX + size + 2, centerY)
+        right.Visible = true
+        table.insert(CrosshairLines, right)
+        
+        -- Center dot
+        local dot = Drawing.new("Circle")
+        dot.Radius = thickness
+        dot.Filled = true
+        dot.Color = Config.Visual.CrosshairColor
+        dot.Position = Vector2.new(centerX, centerY)
+        dot.Visible = true
+        table.insert(CrosshairLines, dot)
+    end
+end
+
+-- ESP Tab
+ESPTab:CreateSection("Main ESP")
+
+ESPTab:CreateToggle({
+    Name = "Enable ESP",
+    CurrentValue = false,
+    Flag = "ESPEnabled",
+    Callback = function(Value)
+        Config.ESP.Enabled = Value
+        if Value then
+            for _, player in pairs(Players:GetPlayers()) do
+                if player ~= LocalPlayer then
+                    CreateESP(player)
+                end
+            end
+        else
+            for player, _ in pairs(ESPObjects) do
+                RemoveESP(player)
+            end
+        end
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Box ESP",
+    CurrentValue = false,
+    Flag = "BoxESP",
+    Callback = function(Value)
+        Config.ESP.Box = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Box Filled",
+    CurrentValue = false,
+    Flag = "BoxFilled",
+    Callback = function(Value)
+        Config.ESP.BoxFilled = Value
+    end
+})
+
+ESPTab:CreateColorPicker({
+    Name = "Box Color",
+    Color = Config.ESP.BoxColor,
+    Flag = "BoxColor",
+    Callback = function(Value)
+        Config.ESP.BoxColor = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Highlight ESP",
+    CurrentValue = false,
+    Flag = "HighlightESP",
+    Callback = function(Value)
+        Config.ESP.Highlight = Value
+    end
+})
+
+ESPTab:CreateColorPicker({
+    Name = "Highlight Color",
+    Color = Config.ESP.HighlightColor,
+    Flag = "HighlightColor",
+    Callback = function(Value)
+        Config.ESP.HighlightColor = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Tracers",
+    CurrentValue = false,
+    Flag = "Tracers",
+    Callback = function(Value)
+        Config.ESP.Tracers = Value
+    end
+})
+
+ESPTab:CreateDropdown({
+    Name = "Tracer Origin",
+    Options = {"Bottom", "Center", "Mouse"},
+    CurrentOption = "Bottom",
+    Flag = "TracerOrigin",
+    Callback = function(Value)
+        Config.ESP.TracerOrigin = Value
+    end
+})
+
+ESPTab:CreateColorPicker({
+    Name = "Tracer Color",
+    Color = Config.ESP.TracerColor,
+    Flag = "TracerColor",
+    Callback = function(Value)
+        Config.ESP.TracerColor = Value
+    end
+})
+
+ESPTab:CreateSection("ESP Extras")
+
+ESPTab:CreateToggle({
+    Name = "Name ESP",
+    CurrentValue = false,
+    Flag = "NameESP",
+    Callback = function(Value)
+        Config.ESP.NameESP = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Distance ESP",
+    CurrentValue = false,
+    Flag = "DistanceESP",
+    Callback = function(Value)
+        Config.ESP.DistanceESP = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Health ESP",
+    CurrentValue = false,
+    Flag = "HealthESP",
+    Callback = function(Value)
+        Config.ESP.HealthESP = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Health Bar",
+    CurrentValue = false,
+    Flag = "HealthBar",
+    Callback = function(Value)
+        Config.ESP.HealthBar = Value
+    end
+})
+
+ESPTab:CreateDropdown({
+    Name = "Health Bar Side",
+    Options = {"Left", "Right"},
+    CurrentOption = "Left",
+    Flag = "HealthBarSide",
+    Callback = function(Value)
+        Config.ESP.HealthBarSide = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Weapon ESP",
+    CurrentValue = false,
+    Flag = "WeaponESP",
+    Callback = function(Value)
+        Config.ESP.WeaponESP = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Skeleton ESP",
+    CurrentValue = false,
+    Flag = "SkeletonESP",
+    Callback = function(Value)
+        Config.ESP.SkeletonESP = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Chams",
+    CurrentValue = false,
+    Flag = "Chams",
+    Callback = function(Value)
+        Config.ESP.Chams = Value
+    end
+})
+
+ESPTab:CreateSection("ESP Settings")
+
+ESPTab:CreateToggle({
+    Name = "Team Check",
+    CurrentValue = true,
+    Flag = "ESPTeamCheck",
+    Callback = function(Value)
+        Config.ESP.TeamCheck = Value
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Visible Check",
+    CurrentValue = true,
+    Flag = "ESPVisibleCheck",
+    Callback = function(Value)
+        Config.ESP.VisibleCheck = Value
+    end
+})
+
+ESPTab:CreateSlider({
+    Name = "Max Distance",
+    Range = {100, 5000},
+    Increment = 100,
+    Suffix = "m",
+    CurrentValue = 1000,
+    Flag = "ESPMaxDistance",
+    Callback = function(Value)
+        Config.ESP.MaxDistance = Value
+    end
+})
+
+-- Aimbot Tab
+AimbotTab:CreateSection("Main Aimbot")
+
+AimbotTab:CreateToggle({
+    Name = "Enable Aimbot",
+    CurrentValue = false,
+    Flag = "AimbotEnabled",
+    Callback = function(Value)
+        Config.Aimbot.Enabled = Value
+    end
+})
+
+AimbotTab:CreateKeybind({
+    Name = "Aimbot Key",
+    CurrentKeybind = "MouseButton2",
+    HoldToInteract = true,
+    Flag = "AimbotKey",
+    Callback = function(Keybind)
+        Config.Aimbot.Key = Keybind
+    end
+})
+
+AimbotTab:CreateDropdown({
+    Name = "Aimbot Mode",
+    Options = {"Camera", "Instant", "Mouse"},
+    CurrentOption = "Camera",
+    Flag = "AimbotMode",
+    Callback = function(Value)
+        Config.Aimbot.Mode = Value
+    end
+})
+
+AimbotTab:CreateDropdown({
+    Name = "Target Part",
+    Options = {"Head", "HumanoidRootPart", "Torso", "Random"},
+    CurrentOption = "Head",
+    Flag = "TargetPart",
+    Callback = function(Value)
+        if Value == "Random" then
+            Config.Aimbot.TargetPart = "Head"
+        else
+            Config.Aimbot.TargetPart = Value
+        end
+    end
+})
+
+AimbotTab:CreateSlider({
+    Name = "Smoothness",
+    Range = {0.01, 1},
+    Increment = 0.01,
+    Suffix = "",
+    CurrentValue = 0.1,
+    Flag = "Smoothness",
+    Callback = function(Value)
+        Config.Aimbot.Smoothness = Value
+    end
+})
+
+AimbotTab:CreateSection("FOV Settings")
+
+AimbotTab:CreateToggle({
+    Name = "Show FOV",
+    CurrentValue = true,
+    Flag = "ShowFOV",
+    Callback = function(Value)
+        Config.Aimbot.ShowFOV = Value
+        if FOV_Circle then
+            FOV_Circle.Visible = Value
+        end
+    end
+})
+
+AimbotTab:CreateToggle({
+    Name = "FOV Filled",
+    CurrentValue = false,
+    Flag = "FOVFilled",
+    Callback = function(Value)
+        Config.Aimbot.FOVFilled = Value
+        CreateFOVCircle()
+    end
+})
+
+AimbotTab:CreateColorPicker({
+    Name = "FOV Color",
+    Color = Config.Aimbot.FOVColor,
+    Flag = "FOVColor",
+    Callback = function(Value)
+        Config.Aimbot.FOVColor = Value
+        if FOV_Circle then
+            FOV_Circle.Color = Value
+        end
+    end
+})
+
+AimbotTab:CreateSlider({
+    Name = "FOV Size",
+    Range = {10, 500},
+    Increment = 5,
+    Suffix = "px",
+    CurrentValue = 100,
+    Flag = "FOVSize",
+    Callback = function(Value)
+        Config.Aimbot.FOV = Value
+        if FOV_Circle then
+            FOV_Circle.Radius = Value
+        end
+    end
+})
+
+AimbotTab:CreateSection("Aimbot Extras")
+
+AimbotTab:CreateToggle({
+    Name = "Team Check",
+    CurrentValue = true,
+    Flag = "AimbotTeamCheck",
+    Callback = function(Value)
+        Config.Aimbot.TeamCheck = Value
+    end
+})
+
+AimbotTab:CreateToggle({
+    Name = "Visible Check",
+    CurrentValue = true,
+    Flag = "AimbotVisibleCheck",
+    Callback = function(Value)
+        Config.Aimbot.VisibleCheck = Value
+    end
+})
+
+AimbotTab:CreateToggle({
+    Name = "Prediction",
+    CurrentValue = false,
+    Flag = "Prediction",
+    Callback = function(Value)
+        Config.Aimbot.Prediction = Value
+    end
+})
+
+AimbotTab:CreateSlider({
+    Name = "Prediction Amount",
+    Range = {0.01, 0.5},
+    Increment = 0.01,
+    Suffix = "s",
+    CurrentValue = 0.165,
+    Flag = "PredictionAmount",
+    Callback = function(Value)
+        Config.Aimbot.PredictionAmount = Value
+    end
+})
+
+AimbotTab:CreateToggle({
+    Name = "Drop Compensation",
+    CurrentValue = false,
+    Flag = "DropCompensation",
+    Callback = function(Value)
+        Config.Aimbot.DropCompensation = Value
+    end
+})
+
+AimbotTab:CreateToggle({
+    Name = "Trigger Bot",
+    CurrentValue = false,
+    Flag = "TriggerBot",
+    Callback = function(Value)
+        Config.Aimbot.TriggerBot = Value
+    end
+})
+
+AimbotTab:CreateToggle({
+    Name = "Auto Fire",
+    CurrentValue = false,
+    Flag = "AutoFire",
+    Callback = function(Value)
+        Config.Aimbot.AutoFire = Value
+    end
+})
+
+-- Weapon Tab
+WeaponTab:CreateSection("Weapon Mods")
+
+WeaponTab:CreateToggle({
+    Name = "No Recoil",
+    CurrentValue = false,
+    Flag = "NoRecoil",
+    Callback = function(Value)
+        Config.Weapon.NoRecoil = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "No Spread",
+    CurrentValue = false,
+    Flag = "NoSpread",
+    Callback = function(Value)
+        Config.Weapon.NoSpread = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "No Sway",
+    CurrentValue = false,
+    Flag = "NoSway",
+    Callback = function(Value)
+        Config.Weapon.NoSway = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "Instant Reload",
+    CurrentValue = false,
+    Flag = "InstantReload",
+    Callback = function(Value)
+        Config.Weapon.InstantReload = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "Rapid Fire",
+    CurrentValue = false,
+    Flag = "RapidFire",
+    Callback = function(Value)
+        Config.Weapon.RapidFire = Value
+    end
+})
+
+WeaponTab:CreateSlider({
+    Name = "Rapid Fire Speed",
+    Range = {0.001, 0.1},
+    Increment = 0.001,
+    Suffix = "s",
+    CurrentValue = 0.01,
+    Flag = "RapidFireSpeed",
+    Callback = function(Value)
+        Config.Weapon.RapidFireSpeed = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "Infinite Ammo",
+    CurrentValue = false,
+    Flag = "InfiniteAmmo",
+    Callback = function(Value)
+        Config.Weapon.InfiniteAmmo = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "Infinite Mag",
+    CurrentValue = false,
+    Flag = "InfiniteMag",
+    Callback = function(Value)
+        Config.Weapon.InfiniteMag = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "Auto Reload",
+    CurrentValue = false,
+    Flag = "AutoReload",
+    Callback = function(Value)
+        Config.Weapon.AutoReload = Value
+    end
+})
+
+WeaponTab:CreateSlider({
+    Name = "Damage Multiplier",
+    Range = {1, 10},
+    Increment = 0.5,
+    Suffix = "x",
+    CurrentValue = 1,
+    Flag = "DamageMultiplier",
+    Callback = function(Value)
+        Config.Weapon.DamageMultiplier = Value
+    end
+})
+
+WeaponTab:CreateSlider({
+    Name = "Fire Rate Multiplier",
+    Range = {1, 5},
+    Increment = 0.1,
+    Suffix = "x",
+    CurrentValue = 1,
+    Flag = "FireRateMultiplier",
+    Callback = function(Value)
+        Config.Weapon.FireRateMultiplier = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "No Muzzle Flash",
+    CurrentValue = false,
+    Flag = "NoMuzzleFlash",
+    Callback = function(Value)
+        Config.Weapon.NoMuzzleFlash = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "No Shells",
+    CurrentValue = false,
+    Flag = "NoShells",
+    Callback = function(Value)
+        Config.Weapon.NoShells = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "Silent Aim",
+    CurrentValue = false,
+    Flag = "SilentAim",
+    Callback = function(Value)
+        Config.Weapon.SilentAim = Value
+    end
+})
+
+WeaponTab:CreateSlider({
+    Name = "Silent Aim Chance",
+    Range = {1, 100},
+    Increment = 1,
+    Suffix = "%",
+    CurrentValue = 100,
+    Flag = "SilentAimChance",
+    Callback = function(Value)
+        Config.Weapon.SilentAimChance = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "Wall Bang",
+    CurrentValue = false,
+    Flag = "WallBang",
+    Callback = function(Value)
+        Config.Weapon.WallBang = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "Instant Equip",
+    CurrentValue = false,
+    Flag = "InstantEquip",
+    Callback = function(Value)
+        Config.Weapon.InstantEquip = Value
+    end
+})
+
+WeaponTab:CreateToggle({
+    Name = "Full Auto",
+    CurrentValue = false,
+    Flag = "FullAuto",
+    Callback = function(Value)
+        Config.Weapon.FullAuto = Value
+    end
+})
+
+-- Player Tab
+PlayerTab:CreateSection("Movement")
+
+PlayerTab:CreateToggle({
+    Name = "Speed Hack",
+    CurrentValue = false,
+    Flag = "SpeedHack",
+    Callback = function(Value)
+        Config.Player.SpeedHack = Value
+    end
+})
+
+PlayerTab:CreateSlider({
+    Name = "Speed Value",
+    Range = {16, 200},
+    Increment = 1,
+    Suffix = "",
+    CurrentValue = 16,
+    Flag = "SpeedValue",
+    Callback = function(Value)
+        Config.Player.SpeedValue = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Jump Power",
+    CurrentValue = false,
+    Flag = "JumpPower",
+    Callback = function(Value)
+        Config.Player.JumpPower = Value
+    end
+})
+
+PlayerTab:CreateSlider({
+    Name = "Jump Value",
+    Range = {50, 300},
+    Increment = 5,
+    Suffix = "",
+    CurrentValue = 50,
+    Flag = "JumpValue",
+    Callback = function(Value)
+        Config.Player.JumpValue = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Infinite Jump",
+    CurrentValue = false,
+    Flag = "InfiniteJump",
+    Callback = function(Value)
+        Config.Player.InfiniteJump = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Fly",
+    CurrentValue = false,
+    Flag = "Fly",
+    Callback = function(Value)
+        Config.Player.Fly = Value
+    end
+})
+
+PlayerTab:CreateSlider({
+    Name = "Fly Speed",
+    Range = {10, 200},
+    Increment = 5,
+    Suffix = "",
+    CurrentValue = 50,
+    Flag = "FlySpeed",
+    Callback = function(Value)
+        Config.Player.FlySpeed = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "No Clip",
+    CurrentValue = false,
+    Flag = "NoClip",
+    Callback = function(Value)
+        Config.Player.NoClip = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Bunny Hop",
+    CurrentValue = false,
+    Flag = "BHop",
+    Callback = function(Value)
+        Config.Player.BHop = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Auto Strafe",
+    CurrentValue = false,
+    Flag = "AutoStrafe",
+    Callback = function(Value)
+        Config.Player.AutoStrafe = Value
+    end
+})
+
+PlayerTab:CreateSection("Combat")
+
+PlayerTab:CreateToggle({
+    Name = "God Mode",
+    CurrentValue = false,
+    Flag = "GodMode",
+    Callback = function(Value)
+        Config.Player.GodMode = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Anti Aim",
+    CurrentValue = false,
+    Flag = "AntiAim",
+    Callback = function(Value)
+        Config.Player.AntiAim = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Spin Bot",
+    CurrentValue = false,
+    Flag = "SpinBot",
+    Callback = function(Value)
+        Config.Player.SpinBot = Value
+    end
+})
+
+PlayerTab:CreateSlider({
+    Name = "Spin Speed",
+    Range = {5, 100},
+    Increment = 5,
+    Suffix = "",
+    CurrentValue = 20,
+    Flag = "SpinSpeed",
+    Callback = function(Value)
+        Config.Player.SpinSpeed = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Fake Lag",
+    CurrentValue = false,
+    Flag = "FakeLag",
+    Callback = function(Value)
+        Config.Player.FakeLag = Value
+    end
+})
+
+PlayerTab:CreateSlider({
+    Name = "Lag Amount",
+    Range = {0.05, 0.5},
+    Increment = 0.05,
+    Suffix = "s",
+    CurrentValue = 0.1,
+    Flag = "LagAmount",
+    Callback = function(Value)
+        Config.Player.LagAmount = Value
+    end
+})
+
+PlayerTab:CreateSection("Camera")
+
+PlayerTab:CreateToggle({
+    Name = "Third Person",
+    CurrentValue = false,
+    Flag = "ThirdPerson",
+    Callback = function(Value)
+        Config.Player.ThirdPerson = Value
+    end
+})
+
+PlayerTab:CreateSlider({
+    Name = "Third Person Distance",
+    Range = {5, 50},
+    Increment = 1,
+    Suffix = "",
+    CurrentValue = 10,
+    Flag = "ThirdPersonDistance",
+    Callback = function(Value)
+        Config.Player.ThirdPersonDistance = Value
+    end
+})
+
+PlayerTab:CreateToggle({
+    Name = "Free Cam",
+    CurrentValue = false,
+    Flag = "FreeCam",
+    Callback = function(Value)
+        Config.Player.FreeCam = Value
+    end
+})
+
+-- Visual Tab
+VisualTab:CreateSection("World Visuals")
+
+VisualTab:CreateToggle({
+    Name = "Full Bright",
+    CurrentValue = false,
+    Flag = "FullBright",
+    Callback = function(Value)
+        Config.Visual.FullBright = Value
+        if Value then
+            game:GetService("Lighting").Brightness = 10
+            game:GetService("Lighting").GlobalShadows = false
+        else
+            game:GetService("Lighting").Brightness = 1
+            game:GetService("Lighting").GlobalShadows = true
+        end
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "No Fog",
+    CurrentValue = false,
+    Flag = "NoFog",
+    Callback = function(Value)
+        Config.Visual.NoFog = Value
+        if Value then
+            game:GetService("Lighting").FogEnd = 100000
+        end
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "No Smoke",
+    CurrentValue = false,
+    Flag = "NoSmoke",
+    Callback = function(Value)
+        Config.Visual.NoSmoke = Value
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "No Flash",
+    CurrentValue = false,
+    Flag = "NoFlash",
+    Callback = function(Value)
+        Config.Visual.NoFlash = Value
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "No Scope",
+    CurrentValue = false,
+    Flag = "NoScope",
+    Callback = function(Value)
+        Config.Visual.NoScope = Value
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "Night Vision",
+    CurrentValue = false,
+    Flag = "NightVision",
+    Callback = function(Value)
+        Config.Visual.NightVision = Value
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "Thermal Vision",
+    CurrentValue = false,
+    Flag = "ThermalVision",
+    Callback = function(Value)
+        Config.Visual.ThermalVision = Value
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "X-Ray",
+    CurrentValue = false,
+    Flag = "XRay",
+    Callback = function(Value)
+        Config.Visual.XRay = Value
+    end
+})
+
+VisualTab:CreateSection("Crosshair")
+
+VisualTab:CreateToggle({
+    Name = "Custom Crosshair",
+    CurrentValue = false,
+    Flag = "CustomCrosshair",
+    Callback = function(Value)
+        Config.Visual.CustomCrosshair = Value
+        CreateCrosshair()
+    end
+})
+
+VisualTab:CreateColorPicker({
+    Name = "Crosshair Color",
+    Color = Config.Visual.CrosshairColor,
+    Flag = "CrosshairColor",
+    Callback = function(Value)
+        Config.Visual.CrosshairColor = Value
+        CreateCrosshair()
+    end
+})
+
+VisualTab:CreateSlider({
+    Name = "Crosshair Size",
+    Range = {5, 50},
+    Increment = 1,
+    Suffix = "px",
+    CurrentValue = 10,
+    Flag = "CrosshairSize",
+    Callback = function(Value)
+        Config.Visual.CrosshairSize = Value
+        CreateCrosshair()
+    end
+})
+
+VisualTab:CreateSlider({
+    Name = "Crosshair Thickness",
+    Range = {1, 10},
+    Increment = 1,
+    Suffix = "px",
+    CurrentValue = 2,
+    Flag = "CrosshairThickness",
+    Callback = function(Value)
+        Config.Visual.CrosshairThickness = Value
+        CreateCrosshair()
+    end
+})
+
+VisualTab:CreateSection("FOV")
+
+VisualTab:CreateToggle({
+    Name = "Custom FOV",
+    CurrentValue = false,
+    Flag = "CustomFOV",
+    Callback = function(Value)
+        Config.Visual.CustomFOV = Value
+        if Value then
+            Camera.FieldOfView = Config.Visual.FieldOfView
+        else
+            Camera.FieldOfView = 70
+        end
+    end
+})
+
+VisualTab:CreateSlider({
+    Name = "Field of View",
+    Range = {30, 120},
+    Increment = 5,
+    Suffix = "",
+    CurrentValue = 70,
+    Flag = "FieldOfView",
+    Callback = function(Value)
+        Config.Visual.FieldOfView = Value
+        if Config.Visual.CustomFOV then
+            Camera.FieldOfView = Value
+        end
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "Remove Textures",
+    CurrentValue = false,
+    Flag = "RemoveTextures",
+    Callback = function(Value)
+        Config.Visual.RemoveTextures = Value
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "Wireframe",
+    CurrentValue = false,
+    Flag = "Wireframe",
+    Callback = function(Value)
+        Config.Visual.Wireframe = Value
+    end
+})
+
+VisualTab:CreateToggle({
+    Name = "Rainbow Mode",
+    CurrentValue = false,
+    Flag = "RainbowMode",
+    Callback = function(Value)
+        Config.Visual.RainbowMode = Value
+    end
+})
+
+-- Misc Tab
+MiscTab:CreateSection("Automation")
+
+MiscTab:CreateToggle({
+    Name = "Auto Farm",
+    CurrentValue = false,
+    Flag = "AutoFarm",
+    Callback = function(Value)
+        Config.Misc.AutoFarm = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Auto Kill",
+    CurrentValue = false,
+    Flag = "AutoKill",
+    Callback = function(Value)
+        Config.Misc.AutoKill = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Kill Aura",
+    CurrentValue = false,
+    Flag = "KillAura",
+    Callback = function(Value)
+        Config.Misc.KillAura = Value
+    end
+})
+
+MiscTab:CreateSlider({
+    Name = "Kill Aura Range",
+    Range = {5, 50},
+    Increment = 1,
+    Suffix = "m",
+    CurrentValue = 15,
+    Flag = "KillAuraRange",
+    Callback = function(Value)
+        Config.Misc.KillAuraRange = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Auto Parry",
+    CurrentValue = false,
+    Flag = "AutoParry",
+    Callback = function(Value)
+        Config.Misc.AutoParry = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Auto Collect",
+    CurrentValue = false,
+    Flag = "AutoCollect",
+    Callback = function(Value)
+        Config.Misc.AutoCollect = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Auto Loot",
+    CurrentValue = false,
+    Flag = "AutoLoot",
+    Callback = function(Value)
+        Config.Misc.AutoLoot = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Auto Heal",
+    CurrentValue = false,
+    Flag = "AutoHeal",
+    Callback = function(Value)
+        Config.Misc.AutoHeal = Value
+    end
+})
+
+MiscTab:CreateSlider({
+    Name = "Heal Threshold",
+    Range = {10, 90},
+    Increment = 5,
+    Suffix = "%",
+    CurrentValue = 50,
+    Flag = "HealThreshold",
+    Callback = function(Value)
+        Config.Misc.HealThreshold = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Auto Armor",
+    CurrentValue = false,
+    Flag = "AutoArmor",
+    Callback = function(Value)
+        Config.Misc.AutoArmor = Value
+    end
+})
+
+MiscTab:CreateSection("Hitbox")
+
+MiscTab:CreateToggle({
+    Name = "Hitbox Expander",
+    CurrentValue = false,
+    Flag = "HitboxExpander",
+    Callback = function(Value)
+        Config.Misc.HitboxExpander = Value
+    end
+})
+
+MiscTab:CreateSlider({
+    Name = "Hitbox Size",
+    Range = {1, 20},
+    Increment = 0.5,
+    Suffix = "x",
+    CurrentValue = 10,
+    Flag = "HitboxSize",
+    Callback = function(Value)
+        Config.Misc.HitboxSize = Value
+    end
+})
+
+MiscTab:CreateSection("Utility")
+
+MiscTab:CreateToggle({
+    Name = "Anti AFK",
+    CurrentValue = false,
+    Flag = "AntiAFK",
+    Callback = function(Value)
+        Config.Misc.AntiAFK = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Radar",
+    CurrentValue = false,
+    Flag = "Radar",
+    Callback = function(Value)
+        Config.Misc.Radar = Value
+    end
+})
+
+MiscTab:CreateSlider({
+    Name = "Radar Size",
+    Range = {100, 500},
+    Increment = 10,
+    Suffix = "px",
+    CurrentValue = 200,
+    Flag = "RadarSize",
+    Callback = function(Value)
+        Config.Misc.RadarSize = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Spectator List",
+    CurrentValue = false,
+    Flag = "SpectatorList",
+    Callback = function(Value)
+        Config.Misc.SpectatorList = Value
+    end
+})
+
+MiscTab:CreateToggle({
+    Name = "Player List",
+    CurrentValue = false,
+    Flag = "PlayerList",
+    Callback = function(Value)
+        Config.Misc.PlayerList = Value
+    end
+})
+
+-- Settings Tab
+SettingsTab:CreateSection("UI Settings")
+
+SettingsTab:CreateDropdown({
+    Name = "UI Theme",
+    Options = {"Default", "Dark", "Light", "Ocean", "Midnight"},
+    CurrentOption = "Default",
+    Flag = "UITheme",
+    Callback = function(Value)
+        Config.Settings.UITheme = Value
+        Rayfield:ChangeTheme(Value)
+    end
+})
+
+SettingsTab:CreateKeybind({
+    Name = "UI Toggle Key",
+    CurrentKeybind = "RightShift",
+    HoldToInteract = false,
+    Flag = "UIToggle",
+    Callback = function(Keybind)
+        Config.Settings.UIToggle = Keybind
+    end
+})
+
+SettingsTab:CreateToggle({
+    Name = "Notifications",
+    CurrentValue = true,
+    Flag = "Notifications",
+    Callback = function(Value)
+        Config.Settings.Notifications = Value
+    end
+})
+
+SettingsTab:CreateToggle({
+    Name = "Streamer Mode",
+    CurrentValue = false,
+    Flag = "StreamerMode",
+    Callback = function(Value)
+        Config.Settings.StreamerMode = Value
+    end
+})
+
+SettingsTab:CreateToggle({
+    Name = "Hide Name",
+    CurrentValue = false,
+    Flag = "HideName",
+    Callback = function(Value)
+        Config.Settings.HideName = Value
+    end
+})
+
+SettingsTab:CreateInput({
+    Name = "Custom Name",
+    PlaceholderText = "Anonymous",
+    RemoveTextAfterFocusLost = false,
+    Flag = "CustomName",
+    Callback = function(Text)
+        Config.Settings.CustomName = Text
+    end
+})
+
+SettingsTab:CreateSection("Config")
+
+SettingsTab:CreateButton({
+    Name = "Save Config",
+    Callback = function()
+        Rayfield:SaveConfiguration()
+        Rayfield:Notify({
+            Title = "Config Saved",
+            Content = "Your settings have been saved!",
+            Duration = 3
+        })
+    end
+})
+
+SettingsTab:CreateButton({
+    Name = "Load Config",
+    Callback = function()
+        Rayfield:LoadConfiguration()
+        Rayfield:Notify({
+            Title = "Config Loaded",
+            Content = "Your settings have been loaded!",
+            Duration = 3
+        })
+    end
+})
+
+SettingsTab:CreateButton({
+    Name = "Destroy UI",
+    Callback = function()
+        Rayfield:Destroy()
+    end
+})
+
+-- Player Added/Removed
+Players.PlayerAdded:Connect(function(player)
+    if Config.ESP.Enabled and player ~= LocalPlayer then
+        CreateESP(player)
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    RemoveESP(player)
+end)
+
+-- Initialize ESP for existing players
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= LocalPlayer then
+        CreateESP(player)
+    end
+end
+
+-- Main Loop
+RunService.RenderStepped:Connect(function()
+    -- Update ESP
+    if Config.ESP.Enabled then
+        UpdateESP()
+    end
+    
+    -- Update FOV Circle
+    if FOV_Circle then
+        FOV_Circle.Position = Vector2.new(Mouse.X, Mouse.Y + 36)
+        FOV_Circle.Visible = Config.Aimbot.Enabled and Config.Aimbot.ShowFOV
+    end
+    
+    -- Update Crosshair
+    if Config.Visual.CustomCrosshair then
+        local centerX = Camera.ViewportSize.X / 2
+        local centerY = Camera.ViewportSize.Y / 2
+        local size = Config.Visual.CrosshairSize
+        
+        if CrosshairLines[1] then
+            CrosshairLines[1].From = Vector2.new(centerX, centerY - size - 2)
+            CrosshairLines[1].To = Vector2.new(centerX, centerY - 2)
+        end
+        if CrosshairLines[2] then
+            CrosshairLines[2].From = Vector2.new(centerX, centerY + 2)
+            CrosshairLines[2].To = Vector2.new(centerX, centerY + size + 2)
+        end
+        if CrosshairLines[3] then
+            CrosshairLines[3].From = Vector2.new(centerX - size - 2, centerY)
+            CrosshairLines[3].To = Vector2.new(centerX - 2, centerY)
+        end
+        if CrosshairLines[4] then
+            CrosshairLines[4].From = Vector2.new(centerX + 2, centerY)
+            CrosshairLines[4].To = Vector2.new(centerX + size + 2, centerY)
+        end
+        if CrosshairLines[5] then
+            CrosshairLines[5].Position = Vector2.new(centerX, centerY)
+        end
+        
+        -- Rainbow mode
+        if Config.Visual.RainbowMode then
+            local hue = tick() % 5 / 5
+            local color = Color3.fromHSV(hue, 1, 1)
+            for _, line in pairs(CrosshairLines) do
+                line.Color = color
+            end
+        end
+    end
+    
+    -- Aimbot
+    if Config.Aimbot.Enabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType[Config.Aimbot.Key]) then
+        local target = GetClosestPlayer()
+        if target then
+            AimAt(target)
+        end
+    end
+    
+    -- Speed Hack
+    if Config.Player.SpeedHack and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.WalkSpeed = Config.Player.SpeedValue
+        end
+    end
+    
+    -- Jump Power
+    if Config.Player.JumpPower and LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.JumpPower = Config.Player.JumpValue
+        end
+    end
+    
+    -- Spin Bot
+    if Config.Player.SpinBot and LocalPlayer.Character then
+        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if rootPart then
+            rootPart.CFrame = rootPart.CFrame * CFrame.Angles(0, math.rad(Config.Player.SpinSpeed), 0)
+        end
+    end
+    
+    -- Anti Aim (simplified)
+    if Config.Player.AntiAim and LocalPlayer.Character then
+        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if rootPart then
+            rootPart.CFrame = CFrame.new(rootPart.Position) * CFrame.Angles(0, math.random(0, 360), 0)
+        end
+    end
+    
+    -- No Clip
+    if Config.Player.NoClip and LocalPlayer.Character then
+        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+    
+    -- Third Person
+    if Config.Player.ThirdPerson then
+        Camera.CameraType = Enum.CameraType.Custom
+        Camera.FieldOfView = 70
+        -- Would need additional setup for proper third person
+    end
+    
+    -- Rainbow FOV
+    if Config.Aimbot.Enabled and Config.Visual.RainbowMode and FOV_Circle then
+        local hue = tick() % 5 / 5
+        FOV_Circle.Color = Color3.fromHSV(hue, 1, 1)
+    end
+end)
+
+-- Input Handling
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    -- Infinite Jump
+    if Config.Player.InfiniteJump and input.KeyCode == Enum.KeyCode.Space then
+        if LocalPlayer.Character then
+            local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            end
+        end
+    end
+    
+    -- Bunny Hop
+    if Config.Player.BHop and input.KeyCode == Enum.KeyCode.Space then
+        while UserInputService:IsKeyDown(Enum.KeyCode.Space) do
+            if LocalPlayer.Character then
+                local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if humanoid and humanoid.FloorMaterial ~= Enum.Material.Air then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end
+            end
+            RunService.RenderStepped:Wait()
+        end
+    end
+end)
+
+-- Fly Logic
+local flyConnection
+local flyVelocity = Vector3.new(0, 0, 0)
+
+local function StartFly()
+    if flyConnection then flyConnection:Disconnect() end
+    
+    local bodyGyro = Instance.new("BodyGyro")
+    local bodyVelocity = Instance.new("BodyVelocity")
+    
+    bodyGyro.P = 9e4
+    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bodyGyro.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
+    
+    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    
+    bodyGyro.Parent = LocalPlayer.Character.HumanoidRootPart
+    bodyVelocity.Parent = LocalPlayer.Character.HumanoidRootPart
+    
+    flyConnection = RunService.RenderStepped:Connect(function()
+        if not Config.Player.Fly then
+            bodyGyro:Destroy()
+            bodyVelocity:Destroy()
+            flyConnection:Disconnect()
+            return
+        end
+        
+        local moveDirection = Vector3.new(0, 0, 0)
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + Camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection - Camera.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection - Camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + Camera.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDirection = moveDirection + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            moveDirection = moveDirection - Vector3.new(0, 1, 0)
+        end
+        
+        bodyVelocity.Velocity = moveDirection.Unit * Config.Player.FlySpeed
+        bodyGyro.CFrame = Camera.CFrame
+    end)
+end
+
+-- Monitor Fly Toggle
+spawn(function()
+    while true do
+        if Config.Player.Fly and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            if not flyConnection then
+                StartFly()
+            end
+        end
+        wait(0.1)
+    end
+end)
+
+-- Initialize FOV Circle
+CreateFOVCircle()
+
+-- Notification
+Rayfield:Notify({
+    Title = "Delta Shooter Hub Loaded",
+    Content = "Press " .. Config.Settings.UIToggle .. " to toggle UI",
+    Duration = 5
+})
+
+print("Delta Shooter Hub | Loaded Successfully")
+print("Features: ESP, Aimbot, Weapon Mods, Player Mods, Visuals, Misc")

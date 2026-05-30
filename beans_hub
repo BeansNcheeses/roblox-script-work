@@ -1,73 +1,5 @@
--- DEBUG VERSION - Delta Shooter Hub
--- This will tell you exactly what's happening
-
-print("=== SCRIPT STARTED ===")
-
--- Test if we can access services
-local success, err = pcall(function()
-    print("Testing Services...")
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    print("✓ Players service OK - User:", LocalPlayer.Name)
-    
-    local HttpService = game:GetService("HttpService")
-    print("✓ HttpService OK")
-    
-    local RunService = game:GetService("RunService")
-    print("✓ RunService OK")
-    
-    local CoreGui = game:GetService("CoreGui")
-    print("✓ CoreGui OK")
-end)
-
-if not success then
-    warn("✗ Service Error:", err)
-    return
-end
-
--- Try to load Rayfield with the CORRECT URL
-print("\n=== LOADING RAYFIELD ===")
-local RayfieldLoadSuccess, Rayfield = pcall(function()
-    return loadstring(game:HttpGet("https://sirius.menu/rayfield", true))()
-end)
-
-if not RayfieldLoadSuccess then
-    warn("✗ Failed to load Rayfield:", Rayfield)
-    
-    -- Try alternative URL
-    print("Trying alternative URL...")
-    RayfieldLoadSuccess, Rayfield = pcall(function()
-        return loadstring(game:HttpGet("https://raw.githubusercontent.com/SiriusSoftwareLtd/Rayfield/main/source.lua", true))()
-    end)
-    
-    if not RayfieldLoadSuccess then
-        warn("✗ Alternative URL also failed:", Rayfield)
-        return
-    end
-end
-
-print("✓ Rayfield loaded successfully!")
-
--- Test if Rayfield has the required functions
-if not Rayfield.CreateWindow then
-    warn("✗ Rayfield.CreateWindow not found!")
-    return
-end
-
--- Create window
-local Window = Rayfield:CreateWindow({
-    Name = "Delta Shooter Hub",
-    LoadingTitle = "Delta Hub",
-    LoadingSubtitle = "by You",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "DeltaHub",
-        FileName = "ShooterConfig"
-    },
-    KeySystem = false
-})
-
-print("✓ Window created!")
+-- Delta Shooter Hub - WORKING VERSION
+print("=== Starting Delta Hub ===")
 
 -- Services
 local Players = game:GetService("Players")
@@ -75,330 +7,270 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local Camera = Workspace.CurrentCamera
-local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
+-- Load Rayfield
+local success, Rayfield = pcall(function()
+    return loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+end)
+
+if not success then
+    warn("Failed to load Rayfield:", Rayfield)
+    return
+end
+
+print("✓ Rayfield loaded")
+
 -- Config
-local Config = {
-    ESP = {
-        Enabled = false,
-        Box = false,
-        BoxFilled = false,
-        BoxColor = Color3.fromRGB(255, 0, 0),
-        BoxFillColor = Color3.fromRGB(255, 0, 0),
-        BoxFillTransparency = 0.5,
-        Tracers = false,
-        TracerColor = Color3.fromRGB(255, 0, 0),
-        TracerOrigin = "Bottom",
-        NameESP = false,
-        NameColor = Color3.fromRGB(255, 255, 255),
-        HealthBar = false,
-        TeamCheck = true,
-        MaxDistance = 1000
-    },
-    Aimbot = {
-        Enabled = false,
-        Key = "MouseButton2",
-        Mode = "Camera",
-        TargetPart = "Head",
-        Smoothness = 0.1,
-        FOV = 100,
-        ShowFOV = true,
-        FOVColor = Color3.fromRGB(255, 255, 255),
-        TeamCheck = true
-    },
-    Weapon = {
-        NoRecoil = false,
-        NoSpread = false,
-        InstantReload = false,
-        RapidFire = false,
-        InfiniteAmmo = false
-    },
-    Player = {
-        SpeedHack = false,
-        SpeedValue = 16,
-        JumpPower = false,
-        JumpValue = 50,
-        Fly = false,
-        FlySpeed = 50,
-        NoClip = false
-    }
+local ESP = {
+    Enabled = false,
+    Box = false,
+    Tracers = false,
+    Names = false,
+    TeamCheck = true,
+    MaxDistance = 1000
 }
 
--- ESP Objects
-local ESPObjects = {}
-local FOV_Circle = nil
+local Aimbot = {
+    Enabled = false,
+    Key = Enum.UserInputType.MouseButton2,
+    Smoothness = 0.1,
+    FOV = 100,
+    ShowFOV = true,
+    TeamCheck = true
+}
 
--- Create FOV Circle
-FOV_Circle = Drawing.new("Circle")
-FOV_Circle.Thickness = 1
+-- Drawing Objects Storage
+local ESPObjects = {}
+local FOV_Circle = Drawing.new("Circle")
+FOV_Circle.Thickness = 1.5
 FOV_Circle.NumSides = 64
-FOV_Circle.Radius = Config.Aimbot.FOV
+FOV_Circle.Radius = Aimbot.FOV
 FOV_Circle.Filled = false
+FOV_Circle.Color = Color3.fromRGB(255, 255, 255)
 FOV_Circle.Visible = false
-FOV_Circle.Color = Config.Aimbot.FOVColor
 FOV_Circle.Transparency = 0.5
+
+-- Create Window
+local Window = Rayfield:CreateWindow({
+    Name = "Delta Shooter Hub",
+    LoadingTitle = "Delta Hub",
+    LoadingSubtitle = "by You",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "DeltaHub",
+        FileName = "Config"
+    },
+    KeySystem = false
+})
+
+print("✓ Window created")
 
 -- Create Tabs
 local ESPTab = Window:CreateTab("ESP", "eye")
 local AimbotTab = Window:CreateTab("Aimbot", "crosshair")
-local WeaponTab = Window:CreateTab("Weapon", "sword")
-local PlayerTab = Window:CreateTab("Player", "user")
 
--- ESP Functions
-local function CreateESP(player)
+-- ESP CREATION FUNCTION
+function CreateESP(player)
     if player == LocalPlayer then return end
+    if ESPObjects[player] then return end
     
-    local espData = {
-        Player = player,
+    print("Creating ESP for:", player.Name)
+    
+    ESPObjects[player] = {
         Box = Drawing.new("Quad"),
-        BoxFill = Drawing.new("Quad"),
         Tracer = Drawing.new("Line"),
-        Name = Drawing.new("Text"),
-        HealthBar = Drawing.new("Square"),
-        HealthBarBG = Drawing.new("Square")
+        Name = Drawing.new("Text")
     }
     
-    espData.Box.Thickness = 1
-    espData.Box.Color = Config.ESP.BoxColor
-    espData.Box.Filled = false
-    espData.Box.Visible = false
+    -- Setup Box
+    ESPObjects[player].Box.Thickness = 1
+    ESPObjects[player].Box.Color = Color3.fromRGB(255, 0, 0)
+    ESPObjects[player].Box.Filled = false
+    ESPObjects[player].Box.Visible = false
     
-    espData.BoxFill.Thickness = 0
-    espData.BoxFill.Color = Config.ESP.BoxFillColor
-    espData.BoxFill.Filled = true
-    espData.BoxFill.Transparency = Config.ESP.BoxFillTransparency
-    espData.BoxFill.Visible = false
+    -- Setup Tracer
+    ESPObjects[player].Tracer.Thickness = 1
+    ESPObjects[player].Tracer.Color = Color3.fromRGB(255, 0, 0)
+    ESPObjects[player].Tracer.Visible = false
     
-    espData.Tracer.Thickness = 1
-    espData.Tracer.Color = Config.ESP.TracerColor
-    espData.Tracer.Visible = false
-    
-    espData.Name.Size = 14
-    espData.Name.Center = true
-    espData.Name.Outline = true
-    espData.Name.Color = Config.ESP.NameColor
-    espData.Name.Visible = false
-    
-    espData.HealthBarBG.Thickness = 1
-    espData.HealthBarBG.Filled = true
-    espData.HealthBarBG.Color = Color3.fromRGB(0, 0, 0)
-    espData.HealthBarBG.Visible = false
-    
-    espData.HealthBar.Thickness = 1
-    espData.HealthBar.Filled = true
-    espData.HealthBar.Color = Color3.fromRGB(0, 255, 0)
-    espData.HealthBar.Visible = false
-    
-    ESPObjects[player] = espData
+    -- Setup Name
+    ESPObjects[player].Name.Size = 14
+    ESPObjects[player].Name.Center = true
+    ESPObjects[player].Name.Outline = true
+    ESPObjects[player].Name.Color = Color3.fromRGB(255, 255, 255)
+    ESPObjects[player].Name.Visible = false
 end
 
-local function RemoveESP(player)
-    local espData = ESPObjects[player]
-    if not espData then return end
+-- ESP REMOVAL FUNCTION
+function RemoveESP(player)
+    if not ESPObjects[player] then return end
     
-    if espData.Box then espData.Box:Remove() end
-    if espData.BoxFill then espData.BoxFill:Remove() end
-    if espData.Tracer then espData.Tracer:Remove() end
-    if espData.Name then espData.Name:Remove() end
-    if espData.HealthBar then espData.HealthBar:Remove() end
-    if espData.HealthBarBG then espData.HealthBarBG:Remove() end
+    if ESPObjects[player].Box then ESPObjects[player].Box:Remove() end
+    if ESPObjects[player].Tracer then ESPObjects[player].Tracer:Remove() end
+    if ESPObjects[player].Name then ESPObjects[player].Name:Remove() end
     
     ESPObjects[player] = nil
+    print("Removed ESP for:", player.Name)
 end
 
-local function UpdateESP()
-    for player, espData in pairs(ESPObjects) do
+-- ESP UPDATE FUNCTION
+function UpdateESP()
+    if not ESP.Enabled then
+        -- Hide all ESP
+        for player, objects in pairs(ESPObjects) do
+            if objects.Box then objects.Box.Visible = false end
+            if objects.Tracer then objects.Tracer.Visible = false end
+            if objects.Name then objects.Name.Visible = false end
+        end
+        return
+    end
+    
+    for player, objects in pairs(ESPObjects) do
+        -- Check if player is valid
         if not player or not player.Parent then
             RemoveESP(player)
             continue
         end
         
         local character = player.Character
-        local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-        local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-        local head = character and character:FindFirstChild("Head")
-        
-        if not character or not humanoid or not rootPart or not head then
-            espData.Box.Visible = false
-            espData.BoxFill.Visible = false
-            espData.Tracer.Visible = false
-            espData.Name.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarBG.Visible = false
+        if not character then
+            objects.Box.Visible = false
+            objects.Tracer.Visible = false
+            objects.Name.Visible = false
             continue
         end
         
-        if Config.ESP.TeamCheck and player.Team == LocalPlayer.Team then
-            espData.Box.Visible = false
-            espData.BoxFill.Visible = false
-            espData.Tracer.Visible = false
-            espData.Name.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarBG.Visible = false
+        local head = character:FindFirstChild("Head")
+        local root = character:FindFirstChild("HumanoidRootPart")
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        
+        if not head or not root or not humanoid then
+            objects.Box.Visible = false
+            objects.Tracer.Visible = false
+            objects.Name.Visible = false
             continue
         end
         
-        local distance = (rootPart.Position - Camera.CFrame.Position).Magnitude
-        if distance > Config.ESP.MaxDistance then
-            espData.Box.Visible = false
-            espData.BoxFill.Visible = false
-            espData.Tracer.Visible = false
-            espData.Name.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarBG.Visible = false
+        -- Team Check
+        if ESP.TeamCheck and player.Team == LocalPlayer.Team then
+            objects.Box.Visible = false
+            objects.Tracer.Visible = false
+            objects.Name.Visible = false
             continue
         end
         
-        local headPos, headOnScreen = Camera:WorldToViewportPoint(head.Position)
-        local rootPos = Camera:WorldToViewportPoint(rootPart.Position)
-        local legPos = Camera:WorldToViewportPoint(rootPart.Position - Vector3.new(0, 3, 0))
-        
-        if not headOnScreen then
-            espData.Box.Visible = false
-            espData.BoxFill.Visible = false
-            espData.Tracer.Visible = false
-            espData.Name.Visible = false
-            espData.HealthBar.Visible = false
-            espData.HealthBarBG.Visible = false
+        -- Distance Check
+        local distance = (root.Position - Camera.CFrame.Position).Magnitude
+        if distance > ESP.MaxDistance then
+            objects.Box.Visible = false
+            objects.Tracer.Visible = false
+            objects.Name.Visible = false
             continue
         end
         
+        -- Get Screen Positions
+        local headPos, headVisible = Camera:WorldToViewportPoint(head.Position)
+        local rootPos = Camera:WorldToViewportPoint(root.Position)
+        local legPos = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+        
+        if not headVisible then
+            objects.Box.Visible = false
+            objects.Tracer.Visible = false
+            objects.Name.Visible = false
+            continue
+        end
+        
+        -- Calculate Box
         local boxHeight = math.abs(headPos.Y - legPos.Y)
         local boxWidth = boxHeight / 2
-        local boxTop = Vector2.new(headPos.X - boxWidth / 2, headPos.Y)
-        local boxBottom = Vector2.new(headPos.X + boxWidth / 2, legPos.Y)
+        local topLeft = Vector2.new(headPos.X - boxWidth/2, headPos.Y)
+        local topRight = Vector2.new(headPos.X + boxWidth/2, headPos.Y)
+        local bottomLeft = Vector2.new(headPos.X - boxWidth/2, legPos.Y)
+        local bottomRight = Vector2.new(headPos.X + boxWidth/2, legPos.Y)
         
-        if Config.ESP.Box then
-            espData.Box.PointA = Vector2.new(boxTop.X, boxTop.Y)
-            espData.Box.PointB = Vector2.new(boxBottom.X, boxTop.Y)
-            espData.Box.PointC = Vector2.new(boxBottom.X, boxBottom.Y)
-            espData.Box.PointD = Vector2.new(boxTop.X, boxBottom.Y)
-            espData.Box.Color = Config.ESP.BoxColor
-            espData.Box.Visible = true
-            
-            if Config.ESP.BoxFilled then
-                espData.BoxFill.PointA = espData.Box.PointA
-                espData.BoxFill.PointB = espData.Box.PointB
-                espData.BoxFill.PointC = espData.Box.PointC
-                espData.BoxFill.PointD = espData.Box.PointD
-                espData.BoxFill.Color = Config.ESP.BoxFillColor
-                espData.BoxFill.Transparency = Config.ESP.BoxFillTransparency
-                espData.BoxFill.Visible = true
-            else
-                espData.BoxFill.Visible = false
-            end
+        -- Update Box
+        if ESP.Box then
+            objects.Box.PointA = topRight
+            objects.Box.PointB = topLeft
+            objects.Box.PointC = bottomLeft
+            objects.Box.PointD = bottomRight
+            objects.Box.Visible = true
         else
-            espData.Box.Visible = false
-            espData.BoxFill.Visible = false
+            objects.Box.Visible = false
         end
         
-        if Config.ESP.Tracers then
-            local origin = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-            if Config.ESP.TracerOrigin == "Mouse" then
-                origin = Vector2.new(Mouse.X, Mouse.Y)
-            elseif Config.ESP.TracerOrigin == "Center" then
-                origin = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-            end
-            espData.Tracer.From = origin
-            espData.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
-            espData.Tracer.Color = Config.ESP.TracerColor
-            espData.Tracer.Visible = true
+        -- Update Tracer
+        if ESP.Tracers then
+            local origin = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y)
+            objects.Tracer.From = origin
+            objects.Tracer.To = Vector2.new(rootPos.X, rootPos.Y)
+            objects.Tracer.Visible = true
         else
-            espData.Tracer.Visible = false
+            objects.Tracer.Visible = false
         end
         
-        if Config.ESP.NameESP then
-            espData.Name.Text = player.DisplayName
-            espData.Name.Position = Vector2.new(headPos.X, headPos.Y - 25)
-            espData.Name.Color = Config.ESP.NameColor
-            espData.Name.Visible = true
+        -- Update Name
+        if ESP.Names then
+            objects.Name.Text = player.DisplayName .. " [" .. math.floor(distance) .. "m]"
+            objects.Name.Position = Vector2.new(headPos.X, headPos.Y - 25)
+            objects.Name.Visible = true
         else
-            espData.Name.Visible = false
-        end
-        
-        if Config.ESP.HealthBar then
-            local healthPercent = humanoid.Health / humanoid.MaxHealth
-            local barHeight = boxHeight
-            local barWidth = 3
-            
-            espData.HealthBarBG.Size = Vector2.new(barWidth, barHeight)
-            espData.HealthBarBG.Position = Vector2.new(boxTop.X - 8, boxTop.Y)
-            espData.HealthBarBG.Visible = true
-            
-            espData.HealthBar.Size = Vector2.new(barWidth, barHeight * healthPercent)
-            espData.HealthBar.Position = Vector2.new(boxTop.X - 8, boxTop.Y + barHeight * (1 - healthPercent))
-            espData.HealthBar.Color = Color3.fromRGB(255 * (1 - healthPercent), 255 * healthPercent, 0)
-            espData.HealthBar.Visible = true
-        else
-            espData.HealthBar.Visible = false
-            espData.HealthBarBG.Visible = false
+            objects.Name.Visible = false
         end
     end
 end
 
--- Aimbot Functions
-local function GetClosestPlayer()
-    local closestPlayer = nil
-    local shortestDistance = Config.Aimbot.FOV
+-- AIMBOT FUNCTION
+function GetClosestPlayer()
+    local closest = nil
+    local shortestDistance = Aimbot.FOV
     
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            if Config.Aimbot.TeamCheck and player.Team == LocalPlayer.Team then
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            -- Team Check
+            if Aimbot.TeamCheck and player.Team == LocalPlayer.Team then
                 continue
             end
             
-            local targetPart = player.Character:FindFirstChild(Config.Aimbot.TargetPart)
-            if not targetPart then continue end
+            local head = player.Character.Head
+            local pos, onScreen = Camera:WorldToViewportPoint(head.Position)
             
-            local pos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
             if onScreen then
-                local distance = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
-                if distance < shortestDistance then
-                    closestPlayer = player
-                    shortestDistance = distance
+                local dist = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).Magnitude
+                if dist < shortestDistance then
+                    shortestDistance = dist
+                    closest = player
                 end
             end
         end
     end
     
-    return closestPlayer
+    return closest
 end
 
-local function AimAt(target)
-    if not target or not target.Character then return end
-    
-    local targetPart = target.Character:FindFirstChild(Config.Aimbot.TargetPart)
-    if not targetPart then return end
-    
-    local targetPos = targetPart.Position
-    local cameraCF = CFrame.new(Camera.CFrame.Position, targetPos)
-    
-    if Config.Aimbot.Mode == "Instant" then
-        Camera.CFrame = cameraCF
-    elseif Config.Aimbot.Mode == "Camera" then
-        Camera.CFrame = Camera.CFrame:Lerp(cameraCF, Config.Aimbot.Smoothness)
-    end
-end
-
--- ESP Tab
-ESPTab:CreateSection("Main ESP")
+-- ESP TAB
+ESPTab:CreateSection("ESP Settings")
 
 ESPTab:CreateToggle({
     Name = "Enable ESP",
     CurrentValue = false,
     Flag = "ESPEnabled",
     Callback = function(Value)
-        Config.ESP.Enabled = Value
+        ESP.Enabled = Value
+        print("ESP Enabled:", Value)
+        
         if Value then
-            for _, player in pairs(Players:GetPlayers()) do
+            -- Create ESP for all existing players
+            for _, player in ipairs(Players:GetPlayers()) do
                 if player ~= LocalPlayer then
                     CreateESP(player)
                 end
             end
         else
+            -- Hide all ESP
             for player, _ in pairs(ESPObjects) do
                 RemoveESP(player)
             end
@@ -411,25 +283,8 @@ ESPTab:CreateToggle({
     CurrentValue = false,
     Flag = "BoxESP",
     Callback = function(Value)
-        Config.ESP.Box = Value
-    end
-})
-
-ESPTab:CreateToggle({
-    Name = "Box Filled",
-    CurrentValue = false,
-    Flag = "BoxFilled",
-    Callback = function(Value)
-        Config.ESP.BoxFilled = Value
-    end
-})
-
-ESPTab:CreateColorPicker({
-    Name = "Box Color",
-    Color = Config.ESP.BoxColor,
-    Flag = "BoxColor",
-    Callback = function(Value)
-        Config.ESP.BoxColor = Value
+        ESP.Box = Value
+        print("Box ESP:", Value)
     end
 })
 
@@ -438,17 +293,8 @@ ESPTab:CreateToggle({
     CurrentValue = false,
     Flag = "Tracers",
     Callback = function(Value)
-        Config.ESP.Tracers = Value
-    end
-})
-
-ESPTab:CreateDropdown({
-    Name = "Tracer Origin",
-    Options = {"Bottom", "Center", "Mouse"},
-    CurrentOption = "Bottom",
-    Flag = "TracerOrigin",
-    Callback = function(Value)
-        Config.ESP.TracerOrigin = Value
+        ESP.Tracers = Value
+        print("Tracers:", Value)
     end
 })
 
@@ -457,25 +303,17 @@ ESPTab:CreateToggle({
     CurrentValue = false,
     Flag = "NameESP",
     Callback = function(Value)
-        Config.ESP.NameESP = Value
-    end
-})
-
-ESPTab:CreateToggle({
-    Name = "Health Bar",
-    CurrentValue = false,
-    Flag = "HealthBar",
-    Callback = function(Value)
-        Config.ESP.HealthBar = Value
+        ESP.Names = Value
+        print("Name ESP:", Value)
     end
 })
 
 ESPTab:CreateToggle({
     Name = "Team Check",
     CurrentValue = true,
-    Flag = "ESPTeamCheck",
+    Flag = "TeamCheck",
     Callback = function(Value)
-        Config.ESP.TeamCheck = Value
+        ESP.TeamCheck = Value
     end
 })
 
@@ -485,21 +323,22 @@ ESPTab:CreateSlider({
     Increment = 100,
     Suffix = "m",
     CurrentValue = 1000,
-    Flag = "ESPMaxDistance",
+    Flag = "MaxDistance",
     Callback = function(Value)
-        Config.ESP.MaxDistance = Value
+        ESP.MaxDistance = Value
     end
 })
 
--- Aimbot Tab
-AimbotTab:CreateSection("Main Aimbot")
+-- AIMBOT TAB
+AimbotTab:CreateSection("Aimbot Settings")
 
 AimbotTab:CreateToggle({
     Name = "Enable Aimbot",
     CurrentValue = false,
     Flag = "AimbotEnabled",
     Callback = function(Value)
-        Config.Aimbot.Enabled = Value
+        Aimbot.Enabled = Value
+        print("Aimbot Enabled:", Value)
     end
 })
 
@@ -509,17 +348,7 @@ AimbotTab:CreateKeybind({
     HoldToInteract = true,
     Flag = "AimbotKey",
     Callback = function(Keybind)
-        Config.Aimbot.Key = Keybind
-    end
-})
-
-AimbotTab:CreateDropdown({
-    Name = "Aimbot Mode",
-    Options = {"Camera", "Instant"},
-    CurrentOption = "Camera",
-    Flag = "AimbotMode",
-    Callback = function(Value)
-        Config.Aimbot.Mode = Value
+        print("Aimbot Key set to:", Keybind)
     end
 })
 
@@ -531,43 +360,29 @@ AimbotTab:CreateSlider({
     CurrentValue = 0.1,
     Flag = "Smoothness",
     Callback = function(Value)
-        Config.Aimbot.Smoothness = Value
-    end
-})
-
-AimbotTab:CreateToggle({
-    Name = "Show FOV",
-    CurrentValue = true,
-    Flag = "ShowFOV",
-    Callback = function(Value)
-        Config.Aimbot.ShowFOV = Value
-    end
-})
-
-AimbotTab:CreateColorPicker({
-    Name = "FOV Color",
-    Color = Config.Aimbot.FOVColor,
-    Flag = "FOVColor",
-    Callback = function(Value)
-        Config.Aimbot.FOVColor = Value
-        if FOV_Circle then
-            FOV_Circle.Color = Value
-        end
+        Aimbot.Smoothness = Value
     end
 })
 
 AimbotTab:CreateSlider({
-    Name = "FOV Size",
+    Name = "FOV",
     Range = {10, 500},
     Increment = 5,
     Suffix = "px",
     CurrentValue = 100,
-    Flag = "FOVSize",
+    Flag = "FOV",
     Callback = function(Value)
-        Config.Aimbot.FOV = Value
-        if FOV_Circle then
-            FOV_Circle.Radius = Value
-        end
+        Aimbot.FOV = Value
+        FOV_Circle.Radius = Value
+    end
+})
+
+AimbotTab:CreateToggle({
+    Name = "Show FOV Circle",
+    CurrentValue = true,
+    Flag = "ShowFOV",
+    Callback = function(Value)
+        Aimbot.ShowFOV = Value
     end
 })
 
@@ -576,136 +391,14 @@ AimbotTab:CreateToggle({
     CurrentValue = true,
     Flag = "AimbotTeamCheck",
     Callback = function(Value)
-        Config.Aimbot.TeamCheck = Value
-    end
-})
-
--- Weapon Tab
-WeaponTab:CreateSection("Weapon Mods")
-
-WeaponTab:CreateToggle({
-    Name = "No Recoil",
-    CurrentValue = false,
-    Flag = "NoRecoil",
-    Callback = function(Value)
-        Config.Weapon.NoRecoil = Value
-    end
-})
-
-WeaponTab:CreateToggle({
-    Name = "No Spread",
-    CurrentValue = false,
-    Flag = "NoSpread",
-    Callback = function(Value)
-        Config.Weapon.NoSpread = Value
-    end
-})
-
-WeaponTab:CreateToggle({
-    Name = "Instant Reload",
-    CurrentValue = false,
-    Flag = "InstantReload",
-    Callback = function(Value)
-        Config.Weapon.InstantReload = Value
-    end
-})
-
-WeaponTab:CreateToggle({
-    Name = "Rapid Fire",
-    CurrentValue = false,
-    Flag = "RapidFire",
-    Callback = function(Value)
-        Config.Weapon.RapidFire = Value
-    end
-})
-
-WeaponTab:CreateToggle({
-    Name = "Infinite Ammo",
-    CurrentValue = false,
-    Flag = "InfiniteAmmo",
-    Callback = function(Value)
-        Config.Weapon.InfiniteAmmo = Value
-    end
-})
-
--- Player Tab
-PlayerTab:CreateSection("Movement")
-
-PlayerTab:CreateToggle({
-    Name = "Speed Hack",
-    CurrentValue = false,
-    Flag = "SpeedHack",
-    Callback = function(Value)
-        Config.Player.SpeedHack = Value
-    end
-})
-
-PlayerTab:CreateSlider({
-    Name = "Speed Value",
-    Range = {16, 200},
-    Increment = 1,
-    Suffix = "",
-    CurrentValue = 16,
-    Flag = "SpeedValue",
-    Callback = function(Value)
-        Config.Player.SpeedValue = Value
-    end
-})
-
-PlayerTab:CreateToggle({
-    Name = "Jump Power",
-    CurrentValue = false,
-    Flag = "JumpPower",
-    Callback = function(Value)
-        Config.Player.JumpPower = Value
-    end
-})
-
-PlayerTab:CreateSlider({
-    Name = "Jump Value",
-    Range = {50, 300},
-    Increment = 5,
-    Suffix = "",
-    CurrentValue = 50,
-    Flag = "JumpValue",
-    Callback = function(Value)
-        Config.Player.JumpValue = Value
-    end
-})
-
-PlayerTab:CreateToggle({
-    Name = "Fly",
-    CurrentValue = false,
-    Flag = "Fly",
-    Callback = function(Value)
-        Config.Player.Fly = Value
-    end
-})
-
-PlayerTab:CreateSlider({
-    Name = "Fly Speed",
-    Range = {10, 200},
-    Increment = 5,
-    Suffix = "",
-    CurrentValue = 50,
-    Flag = "FlySpeed",
-    Callback = function(Value)
-        Config.Player.FlySpeed = Value
-    end
-})
-
-PlayerTab:CreateToggle({
-    Name = "No Clip",
-    CurrentValue = false,
-    Flag = "NoClip",
-    Callback = function(Value)
-        Config.Player.NoClip = Value
+        Aimbot.TeamCheck = Value
     end
 })
 
 -- Player Added/Removed
 Players.PlayerAdded:Connect(function(player)
-    if Config.ESP.Enabled and player ~= LocalPlayer then
+    print("Player joined:", player.Name)
+    if ESP.Enabled then
         CreateESP(player)
     end
 end)
@@ -715,130 +408,43 @@ Players.PlayerRemoving:Connect(function(player)
 end)
 
 -- Initialize ESP for existing players
-for _, player in pairs(Players:GetPlayers()) do
+for _, player in ipairs(Players:GetPlayers()) do
     if player ~= LocalPlayer then
         CreateESP(player)
     end
 end
 
--- Main Loop
+-- MAIN LOOP
+print("Starting main loop...")
+
 RunService.RenderStepped:Connect(function()
     -- Update ESP
-    if Config.ESP.Enabled then
-        UpdateESP()
-    end
+    UpdateESP()
     
     -- Update FOV Circle
-    if FOV_Circle then
-        FOV_Circle.Position = Vector2.new(Mouse.X, Mouse.Y + 36)
-        FOV_Circle.Visible = Config.Aimbot.Enabled and Config.Aimbot.ShowFOV
-    end
+    FOV_Circle.Position = Vector2.new(Mouse.X, Mouse.Y + 36)
+    FOV_Circle.Visible = Aimbot.Enabled and Aimbot.ShowFOV
     
     -- Aimbot
-    if Config.Aimbot.Enabled and UserInputService:IsMouseButtonPressed(Enum.UserInputType[Config.Aimbot.Key]) then
-        local target = GetClosestPlayer()
-        if target then
-            AimAt(target)
-        end
-    end
-    
-    -- Speed Hack
-    if Config.Player.SpeedHack and LocalPlayer.Character then
-        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.WalkSpeed = Config.Player.SpeedValue
-        end
-    end
-    
-    -- Jump Power
-    if Config.Player.JumpPower and LocalPlayer.Character then
-        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if humanoid then
-            humanoid.JumpPower = Config.Player.JumpValue
-        end
-    end
-    
-    -- No Clip
-    if Config.Player.NoClip and LocalPlayer.Character then
-        for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
+    if Aimbot.Enabled then
+        if UserInputService:IsMouseButtonPressed(Aimbot.Key) then
+            local target = GetClosestPlayer()
+            if target and target.Character and target.Character:FindFirstChild("Head") then
+                local targetPos = target.Character.Head.Position
+                local cameraCF = CFrame.new(Camera.CFrame.Position, targetPos)
+                Camera.CFrame = Camera.CFrame:Lerp(cameraCF, Aimbot.Smoothness)
             end
         end
     end
 end)
 
--- Fly Logic
-local flyConnection
-local flyVelocity = Vector3.new(0, 0, 0)
-
-local function StartFly()
-    if flyConnection then flyConnection:Disconnect() end
-    
-    local bodyGyro = Instance.new("BodyGyro")
-    local bodyVelocity = Instance.new("BodyVelocity")
-    
-    bodyGyro.P = 9e4
-    bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bodyGyro.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame
-    
-    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-    
-    bodyGyro.Parent = LocalPlayer.Character.HumanoidRootPart
-    bodyVelocity.Parent = LocalPlayer.Character.HumanoidRootPart
-    
-    flyConnection = RunService.RenderStepped:Connect(function()
-        if not Config.Player.Fly then
-            bodyGyro:Destroy()
-            bodyVelocity:Destroy()
-            flyConnection:Disconnect()
-            return
-        end
-        
-        local moveDirection = Vector3.new(0, 0, 0)
-        
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveDirection = moveDirection + Camera.CFrame.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveDirection = moveDirection - Camera.CFrame.LookVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveDirection = moveDirection - Camera.CFrame.RightVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveDirection = moveDirection + Camera.CFrame.RightVector
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-            moveDirection = moveDirection + Vector3.new(0, 1, 0)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-            moveDirection = moveDirection - Vector3.new(0, 1, 0)
-        end
-        
-        bodyVelocity.Velocity = moveDirection.Unit * Config.Player.FlySpeed
-        bodyGyro.CFrame = Camera.CFrame
-    end)
-end
-
--- Monitor Fly Toggle
-spawn(function()
-    while true do
-        if Config.Player.Fly and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            if not flyConnection then
-                StartFly()
-            end
-        end
-        wait(0.1)
-    end
-end)
+print("✓ Main loop running")
 
 -- Notification
 Rayfield:Notify({
-    Title = "Delta Shooter Hub Loaded",
-    Content = "Press RightShift to toggle UI",
+    Title = "Delta Shooter Hub",
+    Content = "Loaded! Enable ESP or Aimbot to start.",
     Duration = 5
 })
 
-print("Delta Shooter Hub | Loaded Successfully")
+print("=== Delta Hub Fully Loaded ===")

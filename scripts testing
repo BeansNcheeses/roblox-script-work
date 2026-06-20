@@ -1,9 +1,1 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/trabulascript/adoptm3/refs/heads/main/script.lua",true))()
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/fetbobbymope1-cmyk/AdoptMeScript/refs/heads/main/Pro"))()
-
-loadstring(game:HttpGet("https://rblxscrpts.up.railway.app/script/331mp.lua"))()
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/COOLXPLO/DP-HUB-coolxplo/refs/heads/main/AdoptMe.lua"))()
-
-loadstring(game:HttpGet("https://raw.githubusercontent.com/fetbobbymope1-cmyk/AdoptMeScript/refs/heads/main/Pro"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/UniversalDevv/Ez/refs/heads/main/Shadow"))()

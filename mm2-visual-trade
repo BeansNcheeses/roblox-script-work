@@ -1,301 +1,304 @@
---[[
-   STATIC TRADE MENU LAYOUT (Non-functional, different color scheme)
-   - Matches the structure from the screenshot but uses a light-blue theme.
-   - No interactivity, no real items, no MM2 colors.
---]]
+--==========================================================================
+--  STATIC TRADE PANEL MOCKUP  —  non-functional layout demo
+--  Original palette + generic placeholder labels. Nothing is interactive.
+--==========================================================================
 
-local function addCorner(obj, radius)
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 6)
-    c.Parent = obj
-end
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
-local function addStroke(obj, color, thickness)
-    local s = Instance.new("UIStroke")
-    s.Color = color
-    s.Thickness = thickness or 1
-    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    s.Parent = obj
-end
-
-local function createText(parent, text, size, pos, textSize, color, font, align)
-    local lbl = Instance.new("TextLabel")
-    lbl.BackgroundTransparency = 1
-    lbl.Size = size or UDim2.new(1, 0, 0, 20)
-    lbl.Position = pos or UDim2.new(0, 0, 0, 0)
-    lbl.Font = font or Enum.Font.GothamSemibold
-    lbl.Text = text or ""
-    lbl.TextSize = textSize or 14
-    lbl.TextColor3 = color or Color3.fromRGB(30, 30, 30)
-    lbl.TextXAlignment = align or Enum.TextXAlignment.Left
-    lbl.TextYAlignment = Enum.TextYAlignment.Center
-    lbl.Parent = parent
-    return lbl
-end
-
---==== NEW COLOR SCHEME (Light Blue / White / Gray) ====
+--==================== PALETTE (deep navy / teal) =========================
 local C = {
-    WindowBg      = Color3.fromRGB(240, 245, 250),   -- Light blue-white
-    PanelBg       = Color3.fromRGB(255, 255, 255),   -- White
-    PanelDeep     = Color3.fromRGB(248, 248, 248),   -- Off-white
-    SlotBg        = Color3.fromRGB(235, 240, 248),   -- Light blue-gray
-    SlotEmpty     = Color3.fromRGB(245, 245, 245),   -- Lighter gray
-    Stroke        = Color3.fromRGB(200, 220, 240),   -- Soft blue stroke
-    StrokeDark    = Color3.fromRGB(180, 190, 200),   -- Darker stroke
-    TextPrimary   = Color3.fromRGB(30, 30, 30),      -- Dark gray
-    TextSecondary = Color3.fromRGB(100, 120, 140),   -- Medium gray
-    TextMuted     = Color3.fromRGB(150, 150, 150),    -- Light gray
-    Accent        = Color3.fromRGB(0, 120, 210),      -- Blue accent
-    Green         = Color3.fromRGB(40, 180, 80),     -- Green
-    Red           = Color3.fromRGB(220, 60, 60),     -- Red
-    TabOn         = Color3.fromRGB(220, 235, 250),   -- Light blue tab
-    TabOff        = Color3.fromRGB(245, 245, 245),   -- Gray tab
+	Backdrop    = Color3.fromRGB(8, 10, 16),
+	Window      = Color3.fromRGB(20, 23, 34),
+	Panel       = Color3.fromRGB(28, 32, 48),
+	PanelDeep   = Color3.fromRGB(16, 19, 29),
+	Slot        = Color3.fromRGB(38, 43, 61),
+	SlotEmpty   = Color3.fromRGB(24, 28, 41),
+	Stroke      = Color3.fromRGB(58, 66, 92),
+	StrokeSoft  = Color3.fromRGB(44, 50, 70),
+	TextMain    = Color3.fromRGB(236, 240, 250),
+	TextSoft    = Color3.fromRGB(150, 160, 186),
+	TextMuted   = Color3.fromRGB(98, 107, 132),
+	Teal        = Color3.fromRGB(46, 211, 183),
+	Violet      = Color3.fromRGB(146, 118, 255),
+	Amber       = Color3.fromRGB(255, 186, 84),
+	Sky         = Color3.fromRGB(84, 168, 255),
+	Rose        = Color3.fromRGB(232, 96, 124),
+	Slate       = Color3.fromRGB(126, 137, 163),
+	Danger      = Color3.fromRGB(198, 58, 78),
 }
 
---==== SCREEN GUI SETUP ====
-local gui = Instance.new("ScreenGui")
-gui.Name = "TradeLayoutDemo"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-
---==== OVERLAY ====
-local overlay = Instance.new("Frame")
-overlay.Size = UDim2.fromScale(1, 1)
-overlay.Position = UDim2.fromScale(0, 0)
-overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-overlay.BackgroundTransparency = 0.3
-overlay.Parent = gui
-
---==== MAIN WINDOW (720x420) ====
-local winW, winH = 720, 420
-local win = Instance.new("Frame")
-win.Size = UDim2.fromOffset(winW, winH)
-win.Position = UDim2.new(0.5, -winW/2, 0.5, -winH/2)
-win.BackgroundColor3 = C.WindowBg
-win.BorderSizePixel = 0
-win.Parent = overlay
-addCorner(win, 10)
-addStroke(win, C.StrokeDark, 1)
-
---==== TOP BAR ====
-local topBar = Instance.new("Frame")
-topBar.Size = UDim2.new(1, 0, 0, 36)
-topBar.Position = UDim2.fromOffset(0, 0)
-topBar.BackgroundColor3 = C.PanelBg
-topBar.BorderSizePixel = 0
-topBar.Parent = win
-addCorner(topBar, 10)
-addStroke(topBar, C.Stroke, 1)
-
-createText(topBar, "TRADE MENU", UDim2.new(0, 200, 1, 0), UDim2.fromOffset(14, 0), 15, C.TextPrimary, Enum.Font.GothamBold)
-
---==== CLOSE BUTTON ====
-local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.fromOffset(26, 22)
-closeBtn.Position = UDim2.new(1, -34, 0, 7)
-closeBtn.BackgroundColor3 = C.PanelDeep
-closeBtn.BorderSizePixel = 0
-closeBtn.Text = "✕"
-closeBtn.TextSize = 13
-closeBtn.TextColor3 = C.TextSecondary
-closeBtn.Font = Enum.Font.Gotham
-closeBtn.AutoButtonColor = false
-closeBtn.Parent = topBar
-addCorner(closeBtn, 5)
-addStroke(closeBtn, C.Stroke, 1)
-
---==== LEFT PANEL (Inventory) ====
-local leftX, leftY, leftW = 10, 44, 344
-local leftH = winH - leftY - 10
-local invPanel = Instance.new("Frame")
-invPanel.Size = UDim2.fromOffset(leftW, leftH)
-invPanel.Position = UDim2.fromOffset(leftX, leftY)
-invPanel.BackgroundColor3 = C.PanelBg
-invPanel.BorderSizePixel = 0
-invPanel.Parent = win
-addCorner(invPanel, 8)
-addStroke(invPanel, C.Stroke, 1)
-
--- Inventory Title
-createText(invPanel, "INVENTORY", UDim2.new(1, -16, 0, 18), UDim2.fromOffset(10, 6), 12, C.TextPrimary, Enum.Font.GothamBold)
-
---==== CATEGORY TABS ====
-local tabHolder = Instance.new("Frame")
-tabHolder.Size = UDim2.new(1, -16, 0, 24)
-tabHolder.Position = UDim2.fromOffset(8, 26)
-tabHolder.BackgroundTransparency = 1
-tabHolder.Parent = invPanel
-
-local tabs = {"Weapons", "Pets", "Search"}
-for i, tabName in ipairs(tabs) do
-    local tabW = (tabName == "Search") and 80 or 70
-    local tab = Instance.new("TextButton")
-    tab.Size = UDim2.fromOffset(tabW, 22)
-    tab.Position = UDim2.fromOffset((i-1)*(tabW+4), 0)
-    tab.BackgroundColor3 = (i == 1) and C.TabOn or C.TabOff
-    tab.BorderSizePixel = 0
-    tab.Text = tabName:upper()
-    tab.TextSize = 10
-    tab.TextColor3 = (i == 1) and C.Accent or C.TextSecondary
-    tab.Font = Enum.Font.GothamBold
-    tab.AutoButtonColor = false
-    tab.Parent = tabHolder
-    addCorner(tab, 5)
-    addStroke(tab, C.Stroke, 1)
+--==================== HELPERS ============================================
+local function addCorner(object, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, radius or 6)
+	c.Parent = object
+	return c
 end
 
---==== SEARCH BAR ====
-local searchBox = Instance.new("TextBox")
-searchBox.Size = UDim2.new(1, -16, 0, 26)
-searchBox.Position = UDim2.fromOffset(8, 54)
-searchBox.BackgroundColor3 = C.PanelDeep
-searchBox.BorderSizePixel = 0
-searchBox.Font = Enum.Font.Gotham
-searchBox.TextSize = 12
-searchBox.TextColor3 = C.TextPrimary
-searchBox.PlaceholderText = "Search…"
-searchBox.PlaceholderColor3 = C.TextMuted
-searchBox.Text = ""
-searchBox.Parent = invPanel
-addCorner(searchBox, 5)
-addStroke(searchBox, C.Stroke, 1)
+local function addStroke(object, color, thickness, transparency)
+	local s = Instance.new("UIStroke")
+	s.Color = color or C.Stroke
+	s.Thickness = thickness or 1
+	s.Transparency = transparency or 0
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = object
+	return s
+end
 
---==== INVENTORY GRID (Placeholder) ====
-local scroll = Instance.new("ScrollingFrame")
-scroll.Size = UDim2.new(1, -12, 1, -90)
-scroll.Position = UDim2.fromOffset(6, 86)
-scroll.BackgroundTransparency = 1
-scroll.BorderSizePixel = 0
-scroll.ScrollBarThickness = 4
-scroll.ScrollBarImageColor3 = C.Stroke
-scroll.CanvasSize = UDim2.new()
-scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-scroll.Parent = invPanel
+local function addPadding(object, t, b, l, r)
+	local p = Instance.new("UIPadding")
+	p.PaddingTop    = UDim.new(0, t or 0)
+	p.PaddingBottom = UDim.new(0, b or 0)
+	p.PaddingLeft   = UDim.new(0, l or 0)
+	p.PaddingRight  = UDim.new(0, r or 0)
+	p.Parent = object
+	return p
+end
+
+local function createText(parent, text, size, position, textSize, color, font, align)
+	local lbl = Instance.new("TextLabel")
+	lbl.BackgroundTransparency = 1
+	lbl.Size = size or UDim2.new(1, 0, 0, 20)
+	lbl.Position = position or UDim2.fromOffset(0, 0)
+	lbl.Font = font or Enum.Font.GothamSemibold
+	lbl.Text = text or ""
+	lbl.TextSize = textSize or 14
+	lbl.TextColor3 = color or C.TextMain
+	lbl.TextXAlignment = align or Enum.TextXAlignment.Left
+	lbl.TextYAlignment = Enum.TextYAlignment.Center
+	lbl.Parent = parent
+	return lbl
+end
+
+local function createFrame(parent, size, position, color, corner)
+	local f = Instance.new("Frame")
+	f.Size = size
+	f.Position = position
+	f.BackgroundColor3 = color or C.Panel
+	f.BorderSizePixel = 0
+	f.Parent = parent
+	if corner then addCorner(f, corner) end
+	return f
+end
+
+--==================== SCREENGUI ==========================================
+local function guiParent()
+	if typeof(gethui) == "function" then
+		local ok, r = pcall(gethui); if ok and r then return r end
+	end
+	local ok, cg = pcall(function() return game:GetService("CoreGui") end)
+	if ok and cg then return cg end
+	return LocalPlayer:WaitForChild("PlayerGui")
+end
+
+local existing = guiParent():FindFirstChild("StaticTradeMockup")
+if existing then existing:Destroy() end
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "StaticTradeMockup"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.DisplayOrder = 500
+ScreenGui.Parent = guiParent()
+
+--==================== ROOT WINDOW ========================================
+local WIN_W, WIN_H = 724, 408
+
+local backdrop = createFrame(ScreenGui, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), C.Backdrop)
+backdrop.BackgroundTransparency = 0.45
+
+local win = createFrame(backdrop, UDim2.fromOffset(WIN_W, WIN_H),
+	UDim2.new(0.5, -WIN_W/2, 0.5, -WIN_H/2), C.Window, 10)
+addStroke(win, C.Stroke, 1)
+
+-- demo tag
+local tag = createFrame(win, UDim2.fromOffset(78, 18), UDim2.new(1, -88, 0, 8), C.Violet, 4)
+tag.BackgroundTransparency = 0.15
+createText(tag, "DEMO UI", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 10,
+	Color3.fromRGB(16, 16, 24), Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+
+--==================== TIER STYLES (generic) ==============================
+local TIERS = {
+	{ name = "TIER A", color = C.Teal   },
+	{ name = "TIER B", color = C.Violet },
+	{ name = "TIER C", color = C.Amber  },
+	{ name = "TIER D", color = C.Sky    },
+	{ name = "TIER E", color = C.Rose   },
+	{ name = "TIER F", color = C.Slate  },
+}
+
+--==================== LEFT PANEL =========================================
+local L_X, L_Y, L_W = 10, 10, 350
+local L_H = WIN_H - 20
+
+local left = createFrame(win, UDim2.fromOffset(L_W, L_H), UDim2.fromOffset(L_X, L_Y), C.Panel, 8)
+addStroke(left, C.StrokeSoft, 1)
+
+-- tabs
+local tabA = createFrame(left, UDim2.fromOffset(88, 28), UDim2.fromOffset(8, 8), C.Slot, 6)
+addStroke(tabA, C.Teal, 1)
+createText(tabA, "CATEGORY 1", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 11,
+	C.TextMain, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+
+local tabB = createFrame(left, UDim2.fromOffset(88, 28), UDim2.fromOffset(102, 8), C.PanelDeep, 6)
+addStroke(tabB, C.StrokeSoft, 1)
+createText(tabB, "CATEGORY 2", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 11,
+	C.TextSoft, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+
+-- search field (visual only)
+local search = createFrame(left, UDim2.fromOffset(140, 26), UDim2.new(1, -148, 0, 9), C.PanelDeep, 6)
+addStroke(search, C.StrokeSoft, 1)
+createText(search, "Search", UDim2.new(1, -30, 1, 0), UDim2.fromOffset(10, 0), 12,
+	C.TextMuted, Enum.Font.Gotham)
+createText(search, "⌕", UDim2.fromOffset(22, 26), UDim2.new(1, -26, 0, 0), 15,
+	C.TextMuted, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+
+-- item grid
+local gridHolder = createFrame(left, UDim2.new(1, -16, 1, -52), UDim2.fromOffset(8, 44), C.Panel)
+gridHolder.BackgroundTransparency = 1
+gridHolder.ClipsDescendants = true
 
 local grid = Instance.new("UIGridLayout")
-grid.CellSize = UDim2.fromOffset(102, 118)
+grid.CellSize = UDim2.fromOffset(76, 96)
 grid.CellPadding = UDim2.fromOffset(8, 8)
 grid.SortOrder = Enum.SortOrder.LayoutOrder
-grid.Parent = scroll
+grid.Parent = gridHolder
 
--- Add placeholder slots (empty)
-for i = 1, 12 do
-    local slot = Instance.new("Frame")
-    slot.Size = UDim2.fromOffset(102, 118)
-    slot.BackgroundColor3 = C.SlotEmpty
-    slot.BorderSizePixel = 0
-    slot.Parent = scroll
-    addCorner(slot, 6)
-    addStroke(slot, C.Stroke, 1)
+local function makeCard(index, tier, countText)
+	local card = createFrame(gridHolder, UDim2.fromOffset(76, 96), UDim2.fromOffset(0, 0), C.PanelDeep, 6)
+	card.LayoutOrder = index
+	addStroke(card, tier.color, 1, 0.55)
+
+	-- icon placeholder block
+	local icon = createFrame(card, UDim2.fromOffset(48, 48), UDim2.new(0.5, -24, 0, 12), C.Slot, 6)
+	addStroke(icon, C.StrokeSoft, 1)
+	createText(icon, "◆", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 20,
+		tier.color, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+
+	-- count badge
+	if countText then
+		local badge = createFrame(card, UDim2.fromOffset(30, 15), UDim2.new(1, -34, 0, 4), C.Window, 4)
+		addStroke(badge, C.StrokeSoft, 1)
+		createText(badge, countText, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 9,
+			C.TextSoft, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+	end
+
+	-- tier ribbon
+	local ribbon = createFrame(card, UDim2.fromOffset(38, 13), UDim2.fromOffset(5, 62), tier.color, 3)
+	createText(ribbon, tier.name, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 8,
+		Color3.fromRGB(18, 20, 28), Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+
+	-- name bar
+	local nameBar = createFrame(card, UDim2.new(1, -10, 0, 18), UDim2.new(0, 5, 1, -23), C.Slot, 4)
+	createText(nameBar, "Item " .. index, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 10,
+		C.TextMain, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+
+	return card
 end
 
---==== RIGHT PANEL (Offers) ====
-local rightX = leftX + leftW + 10
-local rightW = winW - rightX - 10
-local slotGap = 6
-local slotW = math.floor((rightW - slotGap * 3) / 4)
-local slotH = 94
+local counts = { nil, "x2", nil, "x3", "x2", "x110", nil, "x3", "x4", nil, "x2", "x8" }
+for i = 1, 12 do
+	makeCard(i, TIERS[((i - 1) % #TIERS) + 1], counts[i])
+end
+
+--==================== RIGHT COLUMN =======================================
+local R_X = L_X + L_W + 12
+local R_W = WIN_W - R_X - 10
+local GAP, SLOT_W, SLOT_H = 6, 0, 92
+SLOT_W = math.floor((R_W - GAP * 3) / 4)
+
+local function makeSlot(parent, index, tier, filled)
+	local slot = createFrame(parent, UDim2.fromOffset(SLOT_W, SLOT_H),
+		UDim2.fromOffset((index - 1) * (SLOT_W + GAP), 0),
+		filled and C.Slot or C.SlotEmpty, 7)
+	addStroke(slot, filled and tier.color or C.StrokeSoft, filled and 2 or 1,
+		filled and 0 or 0.3)
+
+	if not filled then
+		createText(slot, "+", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 22,
+			C.TextMuted, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+		return slot
+	end
+
+	local icon = createFrame(slot, UDim2.fromOffset(44, 44), UDim2.new(0.5, -22, 0, 8), C.PanelDeep, 6)
+	addStroke(icon, C.StrokeSoft, 1)
+	createText(icon, "◆", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 19,
+		tier.color, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+
+	local nameBar = createFrame(slot, UDim2.new(1, -12, 0, 18), UDim2.new(0, 6, 1, -24), tier.color, 4)
+	createText(nameBar, "Slot " .. index, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 10,
+		Color3.fromRGB(18, 20, 28), Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+
+	return slot
+end
 
 -- YOUR OFFER
-createText(win, "YOUR OFFER", UDim2.fromOffset(200, 18), UDim2.fromOffset(rightX, leftY), 13, C.TextPrimary, Enum.Font.GothamBold)
-local yourRow = Instance.new("Frame")
-yourRow.Size = UDim2.fromOffset(rightW, slotH)
-yourRow.Position = UDim2.fromOffset(rightX, leftY + 22)
+createText(win, "YOUR OFFER", UDim2.fromOffset(220, 20), UDim2.fromOffset(R_X, L_Y + 2),
+	15, C.TextMain, Enum.Font.GothamBold)
+
+local yourRow = createFrame(win, UDim2.fromOffset(R_W, SLOT_H), UDim2.fromOffset(R_X, L_Y + 26), C.Window)
 yourRow.BackgroundTransparency = 1
-yourRow.Parent = win
+
+makeSlot(yourRow, 1, TIERS[1], true)
+makeSlot(yourRow, 2, TIERS[2], true)
+makeSlot(yourRow, 3, nil, false)
+makeSlot(yourRow, 4, nil, false)
 
 -- THEIR OFFER
-local theirTop = leftY + 22 + slotH + 12
-createText(win, "THEIR OFFER", UDim2.fromOffset(200, 18), UDim2.fromOffset(rightX, theirTop), 13, C.TextPrimary, Enum.Font.GothamBold)
-local theirRow = Instance.new("Frame")
-theirRow.Size = UDim2.fromOffset(rightW, slotH)
-theirRow.Position = UDim2.fromOffset(rightX, theirTop + 22)
+local theirTop = L_Y + 26 + SLOT_H + 16
+createText(win, "THEIR OFFER", UDim2.fromOffset(220, 20), UDim2.fromOffset(R_X, theirTop),
+	15, C.TextMain, Enum.Font.GothamBold)
+createText(win, "(Placeholder)", UDim2.fromOffset(180, 20), UDim2.fromOffset(R_X + R_W - 180, theirTop),
+	12, C.TextSoft, Enum.Font.GothamSemibold, Enum.TextXAlignment.Right)
+
+local theirRow = createFrame(win, UDim2.fromOffset(R_W, SLOT_H),
+	UDim2.fromOffset(R_X, theirTop + 24), C.Window)
 theirRow.BackgroundTransparency = 1
-theirRow.Parent = win
 
---==== OFFER SLOTS (Empty) ====
-local function addSlot(parent, index)
-    local slot = Instance.new("Frame")
-    slot.Size = UDim2.fromOffset(slotW, slotH)
-    slot.Position = UDim2.fromOffset((index-1)*(slotW + slotGap), 0)
-    slot.BackgroundColor3 = C.SlotEmpty
-    slot.BorderSizePixel = 0
-    slot.Parent = parent
-    addCorner(slot, 6)
-    addStroke(slot, C.Stroke, 1)
+makeSlot(theirRow, 1, TIERS[3], true)
+makeSlot(theirRow, 2, TIERS[4], true)
+makeSlot(theirRow, 3, TIERS[5], true)
+makeSlot(theirRow, 4, nil, false)
 
-    -- Plus icon for empty slots
-    local plus = Instance.new("TextLabel")
-    plus.Size = UDim2.fromScale(1, 1)
-    plus.Position = UDim2.fromScale(0, 0)
-    plus.BackgroundTransparency = 1
-    plus.Text = "+"
-    plus.TextSize = 24
-    plus.TextColor3 = C.TextMuted
-    plus.Font = Enum.Font.GothamBold
-    plus.Parent = slot
-end
+--==================== STATUS STRIP =======================================
+local statusTop = theirTop + 24 + SLOT_H + 20
 
--- Your Offer Slots (4)
-for i = 1, 4 do addSlot(yourRow, i) end
+local statusBar = createFrame(win, UDim2.fromOffset(R_W, 34), UDim2.fromOffset(R_X, statusTop),
+	C.PanelDeep, 7)
+addStroke(statusBar, C.Teal, 1, 0.4)
+createText(statusBar, "Status message area", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0),
+	13, C.TextSoft, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
 
--- Their Offer Slots (4)
-for i = 1, 4 do addSlot(theirRow, i) end
+-- thin accent rules above/below, like the screenshot's bracketed status line
+createFrame(win, UDim2.fromOffset(120, 2), UDim2.fromOffset(R_X + (R_W - 120) / 2, statusTop - 5),
+	C.Teal, 1).BackgroundTransparency = 0.35
+createFrame(win, UDim2.fromOffset(120, 2), UDim2.fromOffset(R_X + (R_W - 120) / 2, statusTop + 37),
+	C.Teal, 1).BackgroundTransparency = 0.35
 
---==== STATUS TEXT ====
-local theirStatusY = theirTop + 22 + slotH + 2
-createText(win, "READY", UDim2.fromOffset(120, 16), UDim2.fromOffset(rightX + rightW - 120, theirStatusY), 12, C.Green, Enum.Font.GothamBold, Enum.TextXAlignment.Right)
+--==================== BOTTOM BUTTON ======================================
+local btnTop = statusTop + 48
+local bigBtn = createFrame(win, UDim2.fromOffset(R_W - 20, WIN_H - btnTop - 12),
+	UDim2.fromOffset(R_X + 10, btnTop), C.Danger, 8)
+addStroke(bigBtn, Color3.fromRGB(240, 96, 118), 1, 0.4)
+createText(bigBtn, "DECLINE", UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 24,
+	C.TextMain, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
 
---==== VALUE BAR ====
-local valTop = theirStatusY + 20
-local valueBar = Instance.new("Frame")
-valueBar.Size = UDim2.fromOffset(rightW, 44)
-valueBar.Position = UDim2.fromOffset(rightX, valTop)
-valueBar.BackgroundColor3 = C.PanelDeep
-valueBar.BorderSizePixel = 0
-valueBar.Parent = win
-addCorner(valueBar, 7)
-addStroke(valueBar, C.Stroke, 1)
+--==================== CLOSE (only live control) ==========================
+local close = Instance.new("TextButton")
+close.Size = UDim2.fromOffset(24, 20)
+close.Position = UDim2.new(1, -114, 0, 7)
+close.BackgroundColor3 = C.PanelDeep
+close.BorderSizePixel = 0
+close.AutoButtonColor = false
+close.Font = Enum.Font.GothamBold
+close.Text = "✕"
+close.TextSize = 12
+close.TextColor3 = C.TextSoft
+close.Parent = win
+addCorner(close, 5)
+addStroke(close, C.StrokeSoft, 1)
+close.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
 
-createText(valueBar, "Your value: ✦ 0", UDim2.new(0.5, -12, 0, 18), UDim2.fromOffset(10, 4), 12, C.Accent, Enum.Font.GothamSemibold)
-createText(valueBar, "Their value: ✦ 0", UDim2.new(0.5, -12, 0, 18), UDim2.new(0.5, 0, 0, 4), 12, C.Accent, Enum.Font.GothamSemibold, Enum.TextXAlignment.Right)
-createText(valueBar, "— EVEN —", UDim2.new(1, -20, 0, 16), UDim2.fromOffset(10, 23), 12, C.TextMuted, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-
---==== BUTTONS ====
-local btnTop = valTop + 48
-local btnW = math.floor((rightW - 8) / 2)
-
-local acceptBtn = Instance.new("TextButton")
-acceptBtn.Size = UDim2.fromOffset(btnW, 40)
-acceptBtn.Position = UDim2.fromOffset(rightX, btnTop)
-acceptBtn.BackgroundColor3 = C.Accent
-acceptBtn.BorderSizePixel = 0
-acceptBtn.Text = "ACCEPT"
-acceptBtn.TextSize = 16
-acceptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-acceptBtn.Font = Enum.Font.GothamBold
-acceptBtn.AutoButtonColor = false
-acceptBtn.Parent = win
-addCorner(acceptBtn, 7)
-addStroke(acceptBtn, C.StrokeDark, 1)
-
-local declineBtn = Instance.new("TextButton")
-declineBtn.Size = UDim2.fromOffset(btnW, 40)
-declineBtn.Position = UDim2.fromOffset(rightX + btnW + 8, btnTop)
-declineBtn.BackgroundColor3 = C.Red
-declineBtn.BorderSizePixel = 0
-declineBtn.Text = "DECLINE"
-declineBtn.TextSize = 16
-declineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-declineBtn.Font = Enum.Font.GothamBold
-declineBtn.AutoButtonColor = false
-declineBtn.Parent = win
-addCorner(declineBtn, 7)
-addStroke(declineBtn, C.StrokeDark, 1)
-
---==== CLOSE BUTTON FUNCTION ====
-closeBtn.MouseButton1Click:Connect(function()
-    gui:Destroy()
-end)
+print("[StaticTradeMockup] Layout demo loaded. Nothing is interactive.")

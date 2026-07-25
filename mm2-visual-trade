@@ -1,401 +1,385 @@
 --[[
-  MM2 Fake Trade Script v2 — Authorized Security Assessment
-  Complete replica of the real MM2 trade interface.
-  Place in a LocalScript inside a ScreenGui in StarterGui (or inject via executor).
+  MM2 Fake Trade Script — Exact Replica of Real MM2 Trade UI
+  Based on the provided trade box layout. Keeps ALL original styling.
+  Inventory panel on the left, offer panels on the right.
+  Place in a LocalScript inside StarterGui (or inject via executor).
 ]]
 
 local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-local GuiService = game:GetService("GuiService")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 -- =============================================================================
--- CONFIGURATION — customize these for your pentest
+-- CONFIGURATION
 -- =============================================================================
 local CONFIG = {
-    TradePartnerName = "TraderPro_X",         -- username shown in the trade
-    TradePartnerId = 0,                       -- optional user ID
-    AcceptCooldown = 3.5,                     -- seconds before accept is allowed (realistic)
-    MaxItems = 4,                             -- max items per trade side
-    EnableLogging = true,                     -- prints to console for report
-    FakeInventoryItems = {},                  -- populated below
-    TheirOfferItems = {},                     -- populated below
-}
-
--- Style constants (matching real MM2)
-local STYLE = {
-    -- Main colors
-    BgDark = Color3.fromRGB(18, 18, 26),
-    BgPanel = Color3.fromRGB(24, 24, 36),
-    BgItem = Color3.fromRGB(30, 30, 44),
-    BgItemHover = Color3.fromRGB(38, 38, 54),
-    BgSlot = Color3.fromRGB(20, 20, 32),
-    BgTopBar = Color3.fromRGB(13, 13, 20),
-    BgBottomBar = Color3.fromRGB(13, 13, 20),
-    
-    -- Text
-    TextPrimary = Color3.fromRGB(225, 225, 235),
-    TextSecondary = Color3.fromRGB(160, 160, 175),
-    TextMuted = Color3.fromRGB(100, 100, 120),
-    TextValue = Color3.fromRGB(255, 200, 50),
-    TextValueShadow = Color3.fromRGB(180, 120, 10),
-    
-    -- Rarity colors (MM2 standard)
-    Rarity = {
-        Unique = Color3.fromRGB(255, 215, 0),
-        Chroma = Color3.fromRGB(0, 200, 255),
-        Ancient = Color3.fromRGB(200, 30, 30),
-        Godly = Color3.fromRGB(255, 170, 0),
-        Vintage = Color3.fromRGB(150, 80, 200),
-        Legendary = Color3.fromRGB(150, 50, 220),
-        Rare = Color3.fromRGB(60, 140, 255),
-        Uncommon = Color3.fromRGB(80, 200, 80),
-        Common = Color3.fromRGB(160, 160, 160),
-    },
-    
-    -- Accent
-    Accent = Color3.fromRGB(40, 120, 255),
-    AccentHover = Color3.fromRGB(60, 145, 255),
-    DeclineRed = Color3.fromRGB(200, 45, 45),
-    DeclineRedHover = Color3.fromRGB(230, 55, 55),
-    AcceptGreen = Color3.fromRGB(40, 160, 60),
-    AcceptGreenHover = Color3.fromRGB(50, 190, 75),
-    AcceptGreenDisabled = Color3.fromRGB(30, 80, 40),
-    BorderLight = Color3.fromRGB(45, 45, 60),
-    BorderSlot = Color3.fromRGB(50, 50, 70),
-    SlotActive = Color3.fromRGB(40, 90, 180),
+    TradePartnerName = "TraderPro_X",
+    AcceptCooldown = 3.5,
+    MaxItems = 4,
+    EnableLogging = true,
 }
 
 -- =============================================================================
--- POPULATE FAKE INVENTORY + THEIR OFFER (real MM2 items)
+-- FULL REAL MM2 ITEM DATABASE
 -- =============================================================================
-local function buildFakeData()
-    -- Your inventory — comprehensive list matching real MM2 categories
-    CONFIG.FakeInventoryItems = {
-        -- Godly Knives
-        { Name = "Batwing",         Rarity = "Godly",  Type = "Knife", Value = 53,   Category = "Godly" },
-        { Name = "Chroma Seer",     Rarity = "Chroma", Type = "Knife", Value = 9500, Category = "Godly" },
-        { Name = "Heat",            Rarity = "Godly",  Type = "Knife", Value = 60,   Category = "Godly" },
-        { Name = "Fang",            Rarity = "Godly",  Type = "Knife", Value = 60,   Category = "Godly" },
-        { Name = "Laser",           Rarity = "Godly",  Type = "Knife", Value = 5500, Category = "Godly" },
-        { Name = "Seer",            Rarity = "Godly",  Type = "Knife", Value = 20,   Category = "Godly" },
-        { Name = "Blue Seer",       Rarity = "Godly",  Type = "Knife", Value = 20,   Category = "Godly" },
-        { Name = "Purple Seer",     Rarity = "Godly",  Type = "Knife", Value = 20,   Category = "Godly" },
-        { Name = "Eternal IV",      Rarity = "Godly",  Type = "Knife", Value = 1200, Category = "Godly" },
-        { Name = "Eternal III",     Rarity = "Godly",  Type = "Knife", Value = 1100, Category = "Godly" },
-        { Name = "Clockwork",       Rarity = "Godly",  Type = "Knife", Value = 75,   Category = "Godly" },
-        { Name = "Deathshard",      Rarity = "Godly",  Type = "Knife", Value = 50,   Category = "Godly" },
-        { Name = "Gemstone",        Rarity = "Godly",  Type = "Knife", Value = 80,   Category = "Godly" },
-        { Name = "Heartblade",      Rarity = "Godly",  Type = "Knife", Value = 250,  Category = "Godly" },
-        { Name = "Sugar",           Rarity = "Godly",  Type = "Knife", Value = 350,  Category = "Godly" },
-        { Name = "Cookieblade",     Rarity = "Godly",  Type = "Knife", Value = 90,   Category = "Godly" },
-        { Name = "Ice Dragon",      Rarity = "Godly",  Type = "Knife", Value = 250,  Category = "Godly" },
-        { Name = "Eternalcane",     Rarity = "Godly",  Type = "Knife", Value = 120,  Category = "Godly" },
-        { Name = "Lugercane",       Rarity = "Godly",  Type = "Knife", Value = 180,  Category = "Godly" },
-        { Name = "Slasher",         Rarity = "Godly",  Type = "Knife", Value = 65,   Category = "Godly" },
-        { Name = "Tides",           Rarity = "Godly",  Type = "Knife", Value = 70,   Category = "Godly" },
-        { Name = "Boneblade",       Rarity = "Godly",  Type = "Knife", Value = 70,   Category = "Godly" },
-        { Name = "Green Seer",      Rarity = "Godly",  Type = "Knife", Value = 20,   Category = "Godly" },
-        { Name = "Orange Seer",     Rarity = "Godly",  Type = "Knife", Value = 20,   Category = "Godly" },
-        { Name = "Red Seer",        Rarity = "Godly",  Type = "Knife", Value = 20,   Category = "Godly" },
-        { Name = "Yellow Seer",     Rarity = "Godly",  Type = "Knife", Value = 20,   Category = "Godly" },
-        { Name = "Eternal II",      Rarity = "Godly",  Type = "Knife", Value = 1000, Category = "Godly" },
-        { Name = "Eternal",         Rarity = "Godly",  Type = "Knife", Value = 900,  Category = "Godly" },
-        { Name = "Blaster",         Rarity = "Godly",  Type = "Knife", Value = 40,   Category = "Godly" },
-        { Name = "Handsaw",         Rarity = "Godly",  Type = "Knife", Value = 150,  Category = "Godly" },
-        { Name = "Frostsaber",      Rarity = "Godly",  Type = "Knife", Value = 130,  Category = "Godly" },
-        { Name = "Chroma Fang",     Rarity = "Chroma", Type = "Knife", Value = 12000, Category = "Godly" },
-        { Name = "Chroma Heat",     Rarity = "Chroma", Type = "Knife", Value = 11000, Category = "Godly" },
-        { Name = "Chroma Laser",    Rarity = "Chroma", Type = "Knife", Value = 18000, Category = "Godly" },
-        { Name = "Chroma Boneblade",Rarity = "Chroma", Type = "Knife", Value = 8000,  Category = "Godly" },
-        { Name = "Chroma Tides",    Rarity = "Chroma", Type = "Knife", Value = 9000,  Category = "Godly" },
-        { Name = "Chroma Slasher",  Rarity = "Chroma", Type = "Knife", Value = 7500,  Category = "Godly" },
-        { Name = "Chroma Deathshard",Rarity = "Chroma",Type = "Knife", Value = 7000,  Category = "Godly" },
-        { Name = "Chroma Gemstone", Rarity = "Chroma", Type = "Knife", Value = 15000, Category = "Godly" },
-        { Name = "Chroma Darkbringer",Rarity = "Chroma",Type = "Gun",  Value = 4000,  Category = "Godly" },
-        { Name = "Chroma Lightbringer",Rarity = "Chroma",Type = "Gun",  Value = 4000, Category = "Godly" },
-        { Name = "Chroma Swirly Gun",  Rarity = "Chroma",Type = "Gun",  Value = 20000,Category = "Godly" },
-        { Name = "Chroma Elderwood Scythe",Rarity="Chroma",Type="Knife",Value=28000,Category="Godly"},
-        { Name = "Harvester",       Rarity = "Ancient", Type = "Gun",  Value = 1010, Category = "Ancient" },
-        { Name = "Nik's Scythe",    Rarity = "Ancient", Type = "Knife",Value = 125000,Category="Ancient"},
-        { Name = "Logchopper",      Rarity = "Ancient", Type = "Knife",Value = 110000,Category="Ancient"},
-        { Name = "Elderwood Scythe",Rarity = "Ancient", Type = "Knife",Value = 300,  Category = "Ancient" },
-        { Name = "Iceblaster",      Rarity = "Ancient", Type = "Gun",  Value = 250,  Category = "Ancient" },
-        { Name = "Batwing (Ancient)",Rarity="Ancient",  Type="Knife", Value=53,    Category="Ancient"},
-        { Name = "Corrupt",         Rarity = "Unique",  Type = "Knife",Value = 999999,Category="Unique"},
-        { Name = "Amerilaser",      Rarity = "Godly",  Type = "Gun",  Value = 50,   Category = "Godly" },
-        { Name = "Blossom",         Rarity = "Godly",  Type = "Knife",Value = 1265, Category = "Godly" },
-        { Name = "Sakura",          Rarity = "Godly",  Type = "Knife",Value = 1245, Category = "Godly" },
-        { Name = "Darksword",       Rarity = "Godly",  Type = "Knife",Value = 1575, Category = "Godly" },
-        { Name = "Darkshot",        Rarity = "Godly",  Type = "Gun",  Value = 1600, Category = "Godly" },
-        { Name = "Constellation",   Rarity = "Godly",  Type = "Gun",  Value = 2750, Category = "Godly" },
-        { Name = "Evergun",         Rarity = "Godly",  Type = "Gun",  Value = 3425, Category = "Godly" },
-        { Name = "Evergreen",       Rarity = "Godly",  Type = "Knife",Value = 2475, Category = "Godly" },
-        { Name = "Turkey",          Rarity = "Godly",  Type = "Knife",Value = 2450, Category = "Godly" },
-        { Name = "Traveler's Gun",  Rarity = "Godly",  Type = "Gun",  Value = 4650, Category = "Godly" },
-        { Name = "Vampire's Gun",   Rarity = "Godly",  Type = "Gun",  Value = 1700, Category = "Godly" },
-        { Name = "Raygun",          Rarity = "Godly",  Type = "Gun",  Value = 1365, Category = "Godly" },
-        { Name = "Nebula",          Rarity = "Godly",  Type = "Knife",Value = 500,  Category = "Godly" },
-        { Name = "Plasmabeam",      Rarity = "Godly",  Type = "Gun",  Value = 450,  Category = "Godly" },
-        { Name = "Plasmablade",     Rarity = "Godly",  Type = "Knife",Value = 400,  Category = "Godly" },
-        { Name = "Prismatic",       Rarity = "Godly",  Type = "Knife",Value = 350,  Category = "Godly" },
-        { Name = "Eggblade",        Rarity = "Godly",  Type = "Knife",Value = 300,  Category = "Godly" },
-        { Name = "Alienbeam",       Rarity = "Godly",  Type = "Gun",  Value = 2000, Category = "Godly" },
-        { Name = "Bioblade",        Rarity = "Godly",  Type = "Knife",Value = 1500, Category = "Godly" },
-        -- Legendary
-        { Name = "Cotton Candy",    Rarity = "Legendary",Type="Knife",Value=40,   Category="Legendary"},
-        { Name = "Latte Knife",     Rarity = "Legendary",Type="Knife",Value=170,  Category="Legendary"},
-        { Name = "Latte Gun",       Rarity = "Legendary",Type="Gun", Value=170,   Category="Legendary"},
-        { Name = "Spectral Knife",  Rarity = "Legendary",Type="Knife",Value=75,   Category="Legendary"},
-        { Name = "Aurora Gun",      Rarity = "Legendary",Type="Gun", Value=70,    Category="Legendary"},
-        { Name = "Vampire Gun",     Rarity = "Legendary",Type="Gun", Value=70,    Category="Legendary"},
-        { Name = "Traveler Gun",    Rarity = "Legendary",Type="Gun", Value=75,    Category="Legendary"},
-        { Name = "JD",              Rarity = "Legendary",Type="Knife",Value=35,   Category="Legendary"},
-        { Name = "Beach",           Rarity = "Legendary",Type="Knife",Value=35,   Category="Legendary"},
-        { Name = "Cavern Knife",    Rarity = "Legendary",Type="Knife",Value=10,   Category="Legendary"},
-        { Name = "Arctic Gun",      Rarity = "Legendary",Type="Gun", Value=12,    Category="Legendary"},
-        { Name = "Broken",          Rarity = "Legendary",Type="Knife",Value=7,    Category="Legendary"},
-        { Name = "Frostbite",       Rarity = "Legendary",Type="Knife",Value=18,   Category="Legendary"},
-        { Name = "Peppermint",      Rarity = "Legendary",Type="Knife",Value=15,   Category="Legendary"},
-        -- Rare
-        { Name = "Ghost Blade",     Rarity = "Rare",    Type="Knife",Value=5,     Category="Rare"},
-        { Name = "Shadow Knife",    Rarity = "Rare",    Type="Knife",Value=4,     Category="Rare"},
-        { Name = "Splitter",        Rarity = "Rare",    Type="Knife",Value=3,     Category="Rare"},
-    }
+local MM2_ITEMS = {
+    -- Unique
+    { Name = "Corrupt",           Rarity = "Unique",   Type = "Knife", Value = 999999, Seers = 999999 },
+    -- Chroma Godlies
+    { Name = "Chroma Elderwood Scythe", Rarity = "Chroma", Type = "Knife", Value = 28000, Seers = 28000 },
+    { Name = "Chroma Swirly Gun", Rarity = "Chroma", Type = "Gun",   Value = 20000, Seers = 20000 },
+    { Name = "Chroma Laser",      Rarity = "Chroma", Type = "Knife", Value = 18000, Seers = 18000 },
+    { Name = "Chroma Gemstone",   Rarity = "Chroma", Type = "Knife", Value = 15000, Seers = 15000 },
+    { Name = "Chroma Fang",       Rarity = "Chroma", Type = "Knife", Value = 12000, Seers = 12000 },
+    { Name = "Chroma Heat",       Rarity = "Chroma", Type = "Knife", Value = 11000, Seers = 11000 },
+    { Name = "Chroma Seer",       Rarity = "Chroma", Type = "Knife", Value = 9500,  Seers = 9500 },
+    { Name = "Chroma Tides",      Rarity = "Chroma", Type = "Knife", Value = 9000,  Seers = 9000 },
+    { Name = "Chroma Boneblade",  Rarity = "Chroma", Type = "Knife", Value = 8000,  Seers = 8000 },
+    { Name = "Chroma Slasher",    Rarity = "Chroma", Type = "Knife", Value = 7500,  Seers = 7500 },
+    { Name = "Chroma Deathshard", Rarity = "Chroma", Type = "Knife", Value = 7000,  Seers = 7000 },
+    { Name = "Chroma Darkbringer",Rarity = "Chroma", Type = "Gun",   Value = 4000,  Seers = 4000 },
+    { Name = "Chroma Lightbringer",Rarity = "Chroma",Type = "Gun",   Value = 4000,  Seers = 4000 },
+    -- Ancient
+    { Name = "Nik's Scythe",      Rarity = "Ancient",  Type = "Knife", Value = 125000, Seers = 125000 },
+    { Name = "Logchopper",        Rarity = "Ancient",  Type = "Knife", Value = 110000, Seers = 110000 },
+    { Name = "Harvester",         Rarity = "Ancient",  Type = "Gun",   Value = 10100, Seers = 10100 },
+    { Name = "Battle Axe II",     Rarity = "Ancient",  Type = "Knife", Value = 350,   Seers = 350 },
+    { Name = "Elderwood Scythe",  Rarity = "Ancient",  Type = "Knife", Value = 300,   Seers = 300 },
+    { Name = "Iceblaster",        Rarity = "Ancient",  Type = "Gun",   Value = 250,   Seers = 250 },
+    { Name = "Batwing",           Rarity = "Ancient",  Type = "Knife", Value = 53,    Seers = 53 },
+    -- Godly Knives
+    { Name = "Traveler's Knife",  Rarity = "Godly",    Type = "Knife", Value = 4650,  Seers = 4650 },
+    { Name = "Evergun",           Rarity = "Godly",    Type = "Gun",   Value = 3425,  Seers = 3425 },
+    { Name = "Constellation",     Rarity = "Godly",    Type = "Gun",   Value = 2750,  Seers = 2750 },
+    { Name = "Evergreen",         Rarity = "Godly",    Type = "Knife", Value = 2475,  Seers = 2475 },
+    { Name = "Turkey",            Rarity = "Godly",    Type = "Knife", Value = 2450,  Seers = 2450 },
+    { Name = "Alienbeam",         Rarity = "Godly",    Type = "Gun",   Value = 2000,  Seers = 2000 },
+    { Name = "Vampire's Gun",     Rarity = "Godly",    Type = "Gun",   Value = 1700,  Seers = 1700 },
+    { Name = "Darkshot",          Rarity = "Godly",    Type = "Gun",   Value = 1600,  Seers = 1600 },
+    { Name = "Darksword",         Rarity = "Godly",    Type = "Knife", Value = 1575,  Seers = 1575 },
+    { Name = "Bioblade",          Rarity = "Godly",    Type = "Knife", Value = 1500,  Seers = 1500 },
+    { Name = "Raygun",            Rarity = "Godly",    Type = "Gun",   Value = 1365,  Seers = 1365 },
+    { Name = "Eternal IV",        Rarity = "Godly",    Type = "Knife", Value = 1200,  Seers = 1200 },
+    { Name = "Eternal III",       Rarity = "Godly",    Type = "Knife", Value = 1100,  Seers = 1100 },
+    { Name = "Eternal II",        Rarity = "Godly",    Type = "Knife", Value = 1000,  Seers = 1000 },
+    { Name = "Eternal",           Rarity = "Godly",    Type = "Knife", Value = 900,   Seers = 900 },
+    { Name = "Nebula",            Rarity = "Godly",    Type = "Knife", Value = 500,   Seers = 500 },
+    { Name = "Plasmabeam",        Rarity = "Godly",    Type = "Gun",   Value = 450,   Seers = 450 },
+    { Name = "Sakura",            Rarity = "Godly",    Type = "Knife", Value = 1245,  Seers = 1245 },
+    { Name = "Blossom",           Rarity = "Godly",    Type = "Knife", Value = 1265,  Seers = 1265 },
+    { Name = "Plasmablade",       Rarity = "Godly",    Type = "Knife", Value = 400,   Seers = 400 },
+    { Name = "Prismatic",         Rarity = "Godly",    Type = "Knife", Value = 350,   Seers = 350 },
+    { Name = "Sugar",             Rarity = "Godly",    Type = "Knife", Value = 350,   Seers = 350 },
+    { Name = "Heartblade",        Rarity = "Godly",    Type = "Knife", Value = 250,   Seers = 250 },
+    { Name = "Ice Dragon",        Rarity = "Godly",    Type = "Knife", Value = 250,   Seers = 250 },
+    { Name = "Eggblade",          Rarity = "Godly",    Type = "Knife", Value = 300,   Seers = 300 },
+    { Name = "Lugercane",         Rarity = "Godly",    Type = "Knife", Value = 180,   Seers = 180 },
+    { Name = "Handsaw",           Rarity = "Godly",    Type = "Knife", Value = 150,   Seers = 150 },
+    { Name = "Frostsaber",        Rarity = "Godly",    Type = "Knife", Value = 130,   Seers = 130 },
+    { Name = "Eternalcane",       Rarity = "Godly",    Type = "Knife", Value = 120,   Seers = 120 },
+    { Name = "Cookieblade",       Rarity = "Godly",    Type = "Knife", Value = 90,    Seers = 90 },
+    { Name = "Gemstone",          Rarity = "Godly",    Type = "Knife", Value = 80,    Seers = 80 },
+    { Name = "Clockwork",         Rarity = "Godly",    Type = "Knife", Value = 75,    Seers = 75 },
+    { Name = "Tides",             Rarity = "Godly",    Type = "Knife", Value = 70,    Seers = 70 },
+    { Name = "Boneblade",         Rarity = "Godly",    Type = "Knife", Value = 70,    Seers = 70 },
+    { Name = "Slasher",           Rarity = "Godly",    Type = "Knife", Value = 65,    Seers = 65 },
+    { Name = "Fang",              Rarity = "Godly",    Type = "Knife", Value = 60,    Seers = 60 },
+    { Name = "Heat",              Rarity = "Godly",    Type = "Knife", Value = 60,    Seers = 60 },
+    { Name = "Deathshard",        Rarity = "Godly",    Type = "Knife", Value = 50,    Seers = 50 },
+    { Name = "Amerilaser",        Rarity = "Godly",    Type = "Gun",   Value = 50,    Seers = 50 },
+    { Name = "Blaster",           Rarity = "Godly",    Type = "Knife", Value = 40,    Seers = 40 },
+    { Name = "Laser",             Rarity = "Godly",    Type = "Knife", Value = 5500,  Seers = 5500 },
+    -- Seer set
+    { Name = "Seer",              Rarity = "Godly",    Type = "Knife", Value = 20,    Seers = 20 },
+    { Name = "Blue Seer",         Rarity = "Godly",    Type = "Knife", Value = 20,    Seers = 20 },
+    { Name = "Purple Seer",       Rarity = "Godly",    Type = "Knife", Value = 20,    Seers = 20 },
+    { Name = "Red Seer",          Rarity = "Godly",    Type = "Knife", Value = 20,    Seers = 20 },
+    { Name = "Green Seer",        Rarity = "Godly",    Type = "Knife", Value = 20,    Seers = 20 },
+    { Name = "Orange Seer",       Rarity = "Godly",    Type = "Knife", Value = 20,    Seers = 20 },
+    { Name = "Yellow Seer",       Rarity = "Godly",    Type = "Knife", Value = 20,    Seers = 20 },
+    -- Legendary
+    { Name = "Latte Knife",       Rarity = "Legendary",Type = "Knife", Value = 170,   Seers = 170 },
+    { Name = "Latte Gun",         Rarity = "Legendary",Type = "Gun",   Value = 170,   Seers = 170 },
+    { Name = "Spectral Knife",    Rarity = "Legendary",Type = "Knife", Value = 75,    Seers = 75 },
+    { Name = "Traveler Gun",      Rarity = "Legendary",Type = "Gun",   Value = 75,    Seers = 75 },
+    { Name = "Aurora Gun",        Rarity = "Legendary",Type = "Gun",   Value = 70,    Seers = 70 },
+    { Name = "Vampire Gun",       Rarity = "Legendary",Type = "Gun",   Value = 70,    Seers = 70 },
+    { Name = "Cotton Candy",      Rarity = "Legendary",Type = "Knife", Value = 40,    Seers = 40 },
+    { Name = "JD",                Rarity = "Legendary",Type = "Knife", Value = 35,    Seers = 35 },
+    { Name = "Beach",             Rarity = "Legendary",Type = "Knife", Value = 35,    Seers = 35 },
+    { Name = "Frostbite",         Rarity = "Legendary",Type = "Knife", Value = 18,    Seers = 18 },
+    { Name = "Peppermint",        Rarity = "Legendary",Type = "Knife", Value = 15,    Seers = 15 },
+    { Name = "Arctic Gun",        Rarity = "Legendary",Type = "Gun",   Value = 12,    Seers = 12 },
+    { Name = "Cavern Knife",      Rarity = "Legendary",Type = "Knife", Value = 10,    Seers = 10 },
+    { Name = "Broken",            Rarity = "Legendary",Type = "Knife", Value = 7,     Seers = 7 },
+    -- Rare
+    { Name = "Ghost Blade",       Rarity = "Rare",     Type = "Knife", Value = 5,     Seers = 5 },
+    { Name = "Shadow Knife",      Rarity = "Rare",     Type = "Knife", Value = 4,     Seers = 4 },
+    { Name = "Splitter",          Rarity = "Rare",     Type = "Knife", Value = 3,     Seers = 3 },
+}
 
-    -- Their offer (high-value items to make the trade tempting)
-    CONFIG.TheirOfferItems = {
-        { Name = "Corrupt",            Rarity = "Unique",  Type = "Knife", Value = 999999 },
-        { Name = "Chroma Elderwood Scythe", Rarity = "Chroma", Type = "Knife", Value = 28000 },
-        { Name = "Chroma Swirly Gun",  Rarity = "Chroma", Type = "Gun",   Value = 20000 },
-        { Name = "Harvester",          Rarity = "Ancient", Type = "Gun",   Value = 10100 },
-    }
+-- Their offer — high value items to make the trade tempting
+local THEIR_OFFER = {
+    { Name = "Corrupt",           Rarity = "Unique",   Type = "Knife", Value = 999999, Seers = 999999 },
+    { Name = "Chroma Elderwood Scythe", Rarity = "Chroma", Type = "Knife", Value = 28000, Seers = 28000 },
+    { Name = "Chroma Swirly Gun", Rarity = "Chroma", Type = "Gun",   Value = 20000, Seers = 20000 },
+    { Name = "Harvester",         Rarity = "Ancient",  Type = "Gun",   Value = 10100, Seers = 10100 },
+}
+
+-- Rarity colors (MM2 exact)
+local RARITY_COLORS = {
+    Unique = Color3.fromRGB(255, 215, 0),
+    Chroma = Color3.fromRGB(0, 215, 255),
+    Ancient = Color3.fromRGB(215, 40, 40),
+    Godly = Color3.fromRGB(255, 170, 50),
+    Legendary = Color3.fromRGB(160, 60, 235),
+    Rare = Color3.fromRGB(65, 145, 255),
+}
+
+-- Rarity order for sorting
+local RARITY_ORDER = {
+    Unique = 1, Chroma = 2, Ancient = 3, Godly = 4, Legendary = 5, Rare = 6,
+}
+
+-- =============================================================================
+-- HELPER FUNCTIONS (matching provided style exactly)
+-- =============================================================================
+local function addCorner(object, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius)
+    corner.Parent = object
 end
 
-buildFakeData()
+local function addStroke(object, color, thickness)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color
+    stroke.Thickness = thickness or 1
+    stroke.Parent = object
+end
 
--- =============================================================================
--- LOGGER
--- =============================================================================
+local function createText(parent, text, size, position, textSize)
+    local label = Instance.new("TextLabel")
+    label.Size = size
+    label.Position = position
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.fromRGB(240, 240, 240)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = textSize or 14
+    label.Parent = parent
+    return label
+end
+
 local function log(action, details)
     if not CONFIG.EnableLogging then return end
     local ts = os.date("!%Y-%m-%dT%H:%M:%SZ")
-    warn(string.format("[MM2-PENTEST] [%s] %s | %s | Player: %s", ts, action, details, player.Name))
+    warn(string.format("[MM2-TRADE] [%s] %s | %s | Player: %s", ts, action, details, player.Name))
+end
+
+local function formatValue(val)
+    if val >= 1000000 then
+        return string.format("%.1fM", val / 1000000)
+    elseif val >= 1000 then
+        return string.format("%.1fK", val / 1000)
+    else
+        return tostring(val)
+    end
 end
 
 -- =============================================================================
--- UTILITY: Create rounded frame
+-- RARITY BAR COLOR HELPER
 -- =============================================================================
-local function makeRoundedFrame(parent, size, pos, color, radius)
-    local f = Instance.new("Frame")
-    f.Size = size
-    f.Position = pos
-    f.BackgroundColor3 = color
-    f.BorderSizePixel = 0
-    f.Parent = parent
-    
-    local uic = Instance.new("UICorner")
-    uic.CornerRadius = UDim.new(0, radius or 6)
-    uic.Parent = f
-    
-    return f
-end
-
-local function makeTextLabel(parent, size, pos, text, color, sizeText, font, align)
-    local l = Instance.new("TextLabel")
-    l.Size = size
-    l.Position = pos
-    l.BackgroundTransparency = 1
-    l.Text = text
-    l.TextColor3 = color or STYLE.TextPrimary
-    l.TextSize = sizeText or 14
-    l.Font = font or Enum.Font.GothamBold
-    l.TextXAlignment = align or Enum.TextXAlignment.Left
-    l.TextYAlignment = Enum.TextYAlignment.Center
-    l.RichText = true
-    l.Parent = parent
-    return l
-end
-
-local function makeImageLabel(parent, size, pos, image, transparency)
-    local l = Instance.new("ImageLabel")
-    l.Size = size
-    l.Position = pos
-    l.BackgroundColor3 = Color3.fromRGB(40, 40, 55)
-    l.BackgroundTransparency = 0.5
-    l.BorderSizePixel = 0
-    l.Image = image or ""
-    l.ImageTransparency = transparency or 0
-    l.BackgroundTransparency = 0.3
-    l.Parent = parent
-    
-    local uic = Instance.new("UICorner")
-    uic.CornerRadius = UDim.new(0, 4)
-    uic.Parent = l
-    
-    return l
+local function getRarityColor(rarity)
+    return RARITY_COLORS[rarity] or Color3.fromRGB(160, 160, 160)
 end
 
 -- =============================================================================
--- MAIN TRADE UI BUILDER
+-- MAIN TRADE UI
 -- =============================================================================
 local TradeUI = {}
 TradeUI.__index = TradeUI
 
-function TradeUI.new()
+function TradeUI.new(targetName)
     local self = setmetatable({}, TradeUI)
-    
-    self.YourOffer = {}       -- items you've added (max 4)
-    self.TheirOffer = {}      -- their offered items
-    self.InventoryItems = {}  -- all items in left panel
-    self.Accepted = false     -- has local player accepted?
-    self.CooldownActive = false
+    self.TargetName = targetName
+    CONFIG.TradePartnerName = targetName
+    self.YourOffer = {}
+    self.TheirOffer = {}
+    for _, item in ipairs(THEIR_OFFER) do
+        table.insert(self.TheirOffer, item)
+    end
+    self.InventoryItems = {}
+    for _, item in ipairs(MM2_ITEMS) do
+        table.insert(self.InventoryItems, {Name = item.Name, Rarity = item.Rarity, Type = item.Type, Value = item.Value})
+    end
     self.ActiveFilter = "All"
-    self.FilteredItems = {}
+    self.Accepted = false
+    self.CooldownActive = false
+    self.AcceptStep = 0 -- 0=not accepted, 1=first accept done, 2=confirmed
     
-    self:buildScreen()
+    self:buildUI()
     self:populateInventory()
-    self:populateTheirOffer()
+    self:populateTheirOfferSlots()
+    
+    log("TRADE_OPENED", string.format("Trade opened with target: %s", targetName))
     
     return self
 end
 
-function TradeUI:buildScreen()
-    -- Main ScreenGui
-    self.ScreenGui = Instance.new("ScreenGui")
-    self.ScreenGui.Name = "MM2TradeUI"
-    self.ScreenGui.ResetOnSpawn = false
-    self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    self.ScreenGui.Parent = playerGui
+function TradeUI:buildUI()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "TradeMockup"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = playerGui
+    self.ScreenGui = screenGui
     
-    -- Overlay (dark translucent behind trade)
-    self.Overlay = Instance.new("Frame")
-    self.Overlay.Size = UDim2.new(1, 0, 1, 0)
-    self.Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    self.Overlay.BackgroundTransparency = 0.55
-    self.Overlay.BorderSizePixel = 0
-    self.Overlay.Active = true
-    self.Overlay.Parent = self.ScreenGui
+    -- Background overlay
+    local background = Instance.new("Frame")
+    background.Name = "Background"
+    background.Size = UDim2.fromScale(1, 1)
+    background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    background.BackgroundTransparency = 0.45
+    background.BorderSizePixel = 0
+    background.Active = true
+    background.Parent = screenGui
+    self.Overlay = background
     
-    -- =========================================================================
-    -- MAIN TRADE WINDOW
-    -- =========================================================================
-    self.Main = Instance.new("Frame")
-    self.Main.Name = "TradeWindow"
-    self.Main.Size = UDim2.new(0, 835, 0, 520)
-    self.Main.Position = UDim2.new(0.5, -417, 0.5, -260)
-    self.Main.BackgroundColor3 = STYLE.BgDark
-    self.Main.BorderSizePixel = 0
-    self.Main.Active = true
-    self.Main.Parent = self.ScreenGui
+    -- Main window
+    local main = Instance.new("Frame")
+    main.Name = "TradeWindow"
+    main.AnchorPoint = Vector2.new(0.5, 0.5)
+    main.Position = UDim2.fromScale(0.5, 0.5)
+    main.Size = UDim2.fromOffset(780, 490)
+    main.BackgroundColor3 = Color3.fromRGB(38, 38, 44)
+    main.BorderSizePixel = 0
+    main.Parent = screenGui
+    self.Main = main
     
-    local mainUIC = Instance.new("UICorner")
-    mainUIC.CornerRadius = UDim.new(0, 8)
-    mainUIC.Parent = self.Main
-    
-    -- Border line
-    local borderLine = Instance.new("Frame")
-    borderLine.Size = UDim2.new(1, 0, 0, 2)
-    borderLine.BackgroundColor3 = STYLE.Accent
-    borderLine.BorderSizePixel = 0
-    borderLine.Parent = self.Main
-    
-    local borderUIC = Instance.new("UICorner")
-    borderUIC.CornerRadius = UDim.new(0, 8)
-    borderUIC.Parent = borderLine
+    addCorner(main, 8)
+    addStroke(main, Color3.fromRGB(15, 15, 18), 2)
     
     -- =========================================================================
     -- TOP BAR
     -- =========================================================================
-    self.TopBar = makeRoundedFrame(self.Main, UDim2.new(1, 0, 0, 48), UDim2.new(0, 0, 0, 0), STYLE.BgTopBar, 0)
-    -- Cover top corners
-    local topCover = Instance.new("UICorner")
-    topCover.CornerRadius = UDim.new(0, 8)
-    topCover.Parent = self.TopBar
+    local topBar = Instance.new("Frame")
+    topBar.Name = "TopBar"
+    topBar.Size = UDim2.new(1, 0, 0, 50)
+    topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    topBar.BorderSizePixel = 0
+    topBar.Parent = main
+    addCorner(topBar, 8)
     
-    -- Only round top corners
-    local cornerCmd = Instance.new("UICorner")
-    cornerCmd.CornerRadius = UDim.new(0, 8)
-    cornerCmd.Parent = self.TopBar
+    local title = createText(
+        topBar,
+        "TRADING WITH " .. self.TargetName:upper(),
+        UDim2.new(1, -70, 1, 0),
+        UDim2.fromOffset(18, 0),
+        18
+    )
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    self.TitleLabel = title
     
-    -- Trade icon
-    local tradeIcon = makeTextLabel(self.TopBar, UDim2.new(0, 28, 0, 28), UDim2.new(0, 14, 0, 10), "↔", STYLE.Accent, 20, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    -- Close button
+    local closeButton = Instance.new("TextButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Size = UDim2.fromOffset(36, 34)
+    closeButton.Position = UDim2.new(1, -44, 0, 8)
+    closeButton.BackgroundColor3 = Color3.fromRGB(55, 55, 62)
+    closeButton.Text = "×"
+    closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeButton.Font = Enum.Font.GothamBold
+    closeButton.TextSize = 22
+    closeButton.Parent = topBar
+    addCorner(closeButton, 6)
+    self.CloseButton = closeButton
     
-    -- Title
-    self.TitleLabel = makeTextLabel(self.TopBar, UDim2.new(0, 400, 1, 0), UDim2.new(0, 50, 0, 0), 
-        string.format("Trading with  <font color='rgb(255,200,50)'>%s</font>", CONFIG.TradePartnerName), 
-        STYLE.TextPrimary, 17, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
-    self.TitleLabel.RichText = true
-    
-    -- Trade ID
-    local tradeId = math.random(100000, 999999)
-    makeTextLabel(self.TopBar, UDim2.new(0, 120, 1, 0), UDim2.new(1, -135, 0, 0), 
-        "ID: #" .. tradeId, STYLE.TextMuted, 11, Enum.Font.Gotham, Enum.TextXAlignment.Right)
-    
-    -- Close button (X)
-    self.CloseBtn = Instance.new("TextButton")
-    self.CloseBtn.Size = UDim2.new(0, 32, 0, 32)
-    self.CloseBtn.Position = UDim2.new(1, -38, 0, 8)
-    self.CloseBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
-    self.CloseBtn.Text = "✕"
-    self.CloseBtn.TextColor3 = Color3.fromRGB(200, 60, 60)
-    self.CloseBtn.Font = Enum.Font.GothamBold
-    self.CloseBtn.TextSize = 16
-    self.CloseBtn.BorderSizePixel = 0
-    self.CloseBtn.Parent = self.TopBar
-    
-    local closeUIC = Instance.new("UICorner")
-    closeUIC.CornerRadius = UDim.new(0, 4)
-    closeUIC.Parent = self.CloseBtn
-    
-    self.CloseBtn.MouseButton1Click:Connect(function()
-        log("UI_CLOSE", "User closed trade window")
+    closeButton.MouseButton1Click:Connect(function()
+        log("TRADE_CLOSED", "User closed trade window")
         self:destroy()
     end)
     
-    self.CloseBtn.MouseButton1Down:Connect(function()
-        self.CloseBtn.BackgroundColor3 = Color3.fromRGB(65, 65, 80)
-    end)
-    self.CloseBtn.MouseButton1Up:Connect(function()
-        self.CloseBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
-    end)
+    -- =========================================================================
+    -- STATUS TEXT
+    -- =========================================================================
+    local statusLabel = createText(
+        main,
+        "Click items from your inventory to add them to the trade",
+        UDim2.new(1, -30, 0, 26),
+        UDim2.fromOffset(15, 56),
+        13
+    )
+    statusLabel.Name = "StatusLabel"
+    statusLabel.TextColor3 = Color3.fromRGB(190, 190, 195)
+    self.StatusLabel = statusLabel
     
     -- =========================================================================
-    -- LEFT PANEL: YOUR INVENTORY (with category tabs)
+    -- MAIN CONTENT AREA
     -- =========================================================================
-    self.InvPanel = makeRoundedFrame(self.Main, UDim2.new(0, 330, 0, 370), UDim2.new(0, 12, 0, 56), STYLE.BgPanel, 6)
+    local contentHolder = Instance.new("Frame")
+    contentHolder.Name = "ContentHolder"
+    contentHolder.Size = UDim2.new(1, -30, 0, 325)
+    contentHolder.Position = UDim2.fromOffset(15, 86)
+    contentHolder.BackgroundTransparency = 1
+    contentHolder.Parent = main
+    self.ContentHolder = contentHolder
+    
+    -- =========================================================================
+    -- LEFT PANEL: INVENTORY
+    -- =========================================================================
+    local invPanel = Instance.new("Frame")
+    invPanel.Name = "InventoryPanel"
+    invPanel.Size = UDim2.new(0, 280, 0, 325)
+    invPanel.Position = UDim2.fromScale(0, 0)
+    invPanel.BackgroundColor3 = Color3.fromRGB(40, 40, 48)
+    invPanel.BorderSizePixel = 0
+    invPanel.Parent = contentHolder
+    addCorner(invPanel, 7)
+    addStroke(invPanel, Color3.fromRGB(85, 85, 94), 1)
+    self.InvPanel = invPanel
     
     -- Inventory header
-    makeTextLabel(self.InvPanel, UDim2.new(1, -16, 0, 30), UDim2.new(0, 10, 0, 6), 
-        "YOUR INVENTORY", STYLE.TextSecondary, 13, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
+    local invTitle = createText(
+        invPanel,
+        "YOUR INVENTORY  (" .. #self.InventoryItems .. ")",
+        UDim2.new(1, -16, 0, 26),
+        UDim2.fromOffset(8, 6),
+        12
+    )
+    invTitle.TextXAlignment = Enum.TextXAlignment.Left
+    invTitle.TextColor3 = Color3.fromRGB(180, 180, 190)
+    self.InvTitle = invTitle
     
-    -- Category tabs
-    local categories = {"All", "Godly", "Chroma", "Ancient", "Unique", "Legendary", "Rare"}
+    -- Category filter tabs
+    local categories = {"All", "Chroma", "Ancient", "Unique", "Godly", "Legendary", "Rare"}
     self.TabButtons = {}
-    self.TabBar = makeRoundedFrame(self.InvPanel, UDim2.new(1, -16, 0, 26), UDim2.new(0, 8, 0, 34), STYLE.BgDark, 4)
     
-    local tabWidth = math.floor((330 - 16) / #categories) - 2
+    local tabBar = Instance.new("Frame")
+    tabBar.Name = "TabBar"
+    tabBar.Size = UDim2.new(1, -12, 0, 24)
+    tabBar.Position = UDim2.fromOffset(6, 34)
+    tabBar.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+    tabBar.BorderSizePixel = 0
+    tabBar.Parent = invPanel
+    addCorner(tabBar, 4)
+    self.TabBar = tabBar
+    
+    local tabWidth = math.floor((280 - 12) / #categories) - 2
     for i, cat in ipairs(categories) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(0, tabWidth, 0, 22)
-        btn.Position = UDim2.new(0, 2 + (i - 1) * (tabWidth + 2), 0, 2)
-        btn.BackgroundColor3 = (cat == "All") and STYLE.Accent or Color3.fromRGB(35, 35, 50)
+        btn.Size = UDim2.fromOffset(tabWidth, 20)
+        btn.Position = UDim2.fromOffset(2 + (i - 1) * (tabWidth + 2), 2)
+        btn.BackgroundColor3 = (cat == "All") and Color3.fromRGB(52, 120, 200) or Color3.fromRGB(48, 48, 56)
         btn.Text = cat:upper()
-        btn.TextColor3 = (cat == "All") and Color3.fromRGB(255, 255, 255) or STYLE.TextSecondary
+        btn.TextColor3 = (cat == "All") and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(170, 170, 180)
         btn.Font = Enum.Font.GothamBold
-        btn.TextSize = 10
+        btn.TextSize = 9
         btn.BorderSizePixel = 0
-        btn.Parent = self.TabBar
-        btn.ClipsDescendants = true
-        
-        local btnUIC = Instance.new("UICorner")
-        btnUIC.CornerRadius = UDim.new(0, 3)
-        btnUIC.Parent = btn
+        btn.Parent = tabBar
+        addCorner(btn, 3)
         
         btn.MouseButton1Click:Connect(function()
             self:setFilter(cat)
@@ -405,261 +389,344 @@ function TradeUI:buildScreen()
     end
     
     -- Inventory scrolling list
-    self.InvList = Instance.new("ScrollingFrame")
-    self.InvList.Size = UDim2.new(1, -16, 1, -74)
-    self.InvList.Position = UDim2.new(0, 8, 0, 66)
-    self.InvList.BackgroundTransparency = 1
-    self.InvList.BorderSizePixel = 0
-    self.InvList.ScrollBarThickness = 4
-    self.InvList.ScrollBarImageColor3 = Color3.fromRGB(60, 60, 75)
-    self.InvList.CanvasSize = UDim2.new(0, 0, 0, 0)
-    self.InvList.Parent = self.InvPanel
-    
-    local listClip = Instance.new("UICorner")
-    listClip.CornerRadius = UDim.new(0, 6)
-    listClip.Parent = self.InvList
+    local invList = Instance.new("ScrollingFrame")
+    invList.Name = "InvList"
+    invList.Size = UDim2.new(1, -12, 1, -68)
+    invList.Position = UDim2.fromOffset(6, 62)
+    invList.BackgroundTransparency = 1
+    invList.BorderSizePixel = 0
+    invList.ScrollBarThickness = 4
+    invList.ScrollBarImageColor3 = Color3.fromRGB(75, 75, 85)
+    invList.CanvasSize = UDim2.fromOffset(0, 0)
+    invList.Parent = invPanel
+    self.InvList = invList
     
     -- =========================================================================
-    -- RIGHT PANEL: TRADE OFFERS
+    -- RIGHT PANEL: OFFER SLOTS (two stacked)
     -- =========================================================================
-    -- Your Offer panel (top right)
-    self.YourOfferPanel = makeRoundedFrame(self.Main, UDim2.new(0, 475, 0, 178), UDim2.new(0, 350, 0, 56), STYLE.BgPanel, 6)
+    local rightPanel = Instance.new("Frame")
+    rightPanel.Name = "RightPanel"
+    rightPanel.Size = UDim2.new(0, 460, 1, 0)
+    rightPanel.Position = UDim2.fromOffset(295, 0)
+    rightPanel.BackgroundTransparency = 1
+    rightPanel.Parent = contentHolder
     
-    -- Header with count
-    self.YourOfferHeader = makeTextLabel(self.YourOfferPanel, UDim2.new(0, 300, 0, 26), UDim2.new(0, 12, 0, 6), 
-        "YOUR OFFER  (0/" .. CONFIG.MaxItems .. ")", STYLE.TextSecondary, 13, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
+    -- =========================================================================
+    -- YOUR OFFER PANEL (top)
+    -- =========================================================================
+    local yourPanel = Instance.new("Frame")
+    yourPanel.Name = "YourPanel"
+    yourPanel.Size = UDim2.new(1, 0, 0, 157)
+    yourPanel.Position = UDim2.fromScale(0, 0)
+    yourPanel.BackgroundColor3 = Color3.fromRGB(48, 48, 55)
+    yourPanel.BorderSizePixel = 0
+    yourPanel.Parent = rightPanel
+    addCorner(yourPanel, 7)
+    addStroke(yourPanel, Color3.fromRGB(85, 85, 94), 1)
+    self.YourPanel = yourPanel
     
-    -- 4 item slots for your offer
+    local yourTitle = createText(
+        yourPanel,
+        "YOUR OFFER",
+        UDim2.new(1, -20, 0, 32),
+        UDim2.fromOffset(10, 4),
+        15
+    )
+    yourTitle.TextXAlignment = Enum.TextXAlignment.Left
+    self.YourPanelTitle = yourTitle
+    
+    local yourDivider = Instance.new("Frame")
+    yourDivider.Size = UDim2.new(1, -20, 0, 1)
+    yourDivider.Position = UDim2.fromOffset(10, 36)
+    yourDivider.BackgroundColor3 = Color3.fromRGB(85, 85, 94)
+    yourDivider.BorderSizePixel = 0
+    yourDivider.Parent = yourPanel
+    
+    -- Your slots (4 slots in a row)
+    local yourSlotsHolder = Instance.new("Frame")
+    yourSlotsHolder.Name = "YourSlots"
+    yourSlotsHolder.Size = UDim2.new(1, -20, 0, 112)
+    yourSlotsHolder.Position = UDim2.fromOffset(10, 40)
+    yourSlotsHolder.BackgroundTransparency = 1
+    yourSlotsHolder.Parent = yourPanel
+    self.YourSlotsHolder = yourSlotsHolder
+    
     self.YourSlots = {}
-    local slotSize = 105
-    local gap = 8
-    local startX = 12
-    for i = 1, CONFIG.MaxItems do
-        local slot = makeRoundedFrame(self.YourOfferPanel, UDim2.new(0, slotSize, 0, 130), 
-            UDim2.new(0, startX + (i - 1) * (slotSize + gap), 0, 32), STYLE.BgSlot, 6)
+    local slotSizeX = 100
+    local slotGap = 10
+    local totalSlotWidth = 4 * slotSizeX + 3 * slotGap
+    local slotStartX = (460 - 20 - totalSlotWidth) / 2
+    
+    for i = 1, 4 do
+        local slot = Instance.new("Frame")
+        slot.Name = "Slot" .. i
+        slot.Size = UDim2.fromOffset(slotSizeX, 108)
+        slot.Position = UDim2.fromOffset(slotStartX + (i - 1) * (slotSizeX + slotGap), 2)
+        slot.BackgroundColor3 = Color3.fromRGB(62, 62, 70)
+        slot.BorderSizePixel = 0
+        slot.Parent = yourSlotsHolder
+        addCorner(slot, 5)
+        addStroke(slot, Color3.fromRGB(92, 92, 102), 1)
         
-        -- Slot border
-        local border = Instance.new("Frame")
-        border.Size = UDim2.new(1, 0, 1, 0)
-        border.BackgroundTransparency = 1
-        border.BorderSizePixel = 1
-        border.BorderColor3 = STYLE.BorderSlot
-        border.Parent = slot
+        local plus = createText(
+            slot,
+            "+",
+            UDim2.fromScale(1, 1),
+            UDim2.fromScale(0, 0),
+            26
+        )
+        plus.TextColor3 = Color3.fromRGB(135, 135, 145)
+        plus.Name = "PlusIcon"
         
-        local slotBorderUIC = Instance.new("UICorner")
-        slotBorderUIC.CornerRadius = UDim.new(0, 6)
-        slotBorderUIC.Parent = border
-        
-        -- Slot number indicator
-        local numLabel = makeTextLabel(slot, UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, -2, 0), 
-            tostring(i), STYLE.TextMuted, 10, Enum.Font.Gotham, Enum.TextXAlignment.Center)
-        
-        -- Empty slot icon
-        local emptyIcon = makeTextLabel(slot, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0), 
-            "+", Color3.fromRGB(60, 60, 75), 30, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-        emptyIcon.TextYAlignment = Enum.TextYAlignment.Center
-        
-        slot.Data = { index = i, item = nil, border = border, emptyIcon = emptyIcon }
+        slot.Data = { index = i, item = nil, border = slot:FindFirstChildOfClass("UIStroke") }
         self.YourSlots[i] = slot
     end
     
-    -- Value summary for your offer
-    self.YourValueLabel = makeTextLabel(self.YourOfferPanel, UDim2.new(0, 200, 0, 18), UDim2.new(0, 12, 0, 156),
-        "Value: ✦ 0", STYLE.TextValue, 12, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
+    -- Your accepted label
+    local yourAccepted = createText(
+        yourPanel,
+        "WAITING",
+        UDim2.new(1, -20, 0, 20),
+        UDim2.new(0, 10, 1, -24),
+        12
+    )
+    yourAccepted.Name = "AcceptedLabel"
+    yourAccepted.TextColor3 = Color3.fromRGB(190, 190, 195)
+    self.YourAcceptedLabel = yourAccepted
     
-    -- Separator line
-    local sepLine = Instance.new("Frame")
-    sepLine.Size = UDim2.new(1, -24, 0, 1)
-    sepLine.Position = UDim2.new(0, 12, 0, 178)
-    sepLine.BackgroundColor3 = STYLE.BorderLight
-    sepLine.BorderSizePixel = 0
-    sepLine.Parent = self.YourOfferPanel  -- Actually goes in Main, below YourOfferPanel
+    -- =========================================================================
+    -- SEPARATOR TEXT "VS"
+    -- =========================================================================
+    local vsLabel = createText(
+        rightPanel,
+        "VS",
+        UDim2.new(1, 0, 0, 18),
+        UDim2.fromOffset(0, 157),
+        14
+    )
+    vsLabel.TextColor3 = Color3.fromRGB(130, 130, 140)
+    vsLabel.TextXAlignment = Enum.TextXAlignment.Center
+    vsLabel.TextYAlignment = Enum.TextYAlignment.Center
     
-    -- Their Offer panel (bottom right)
-    self.TheirOfferPanel = makeRoundedFrame(self.Main, UDim2.new(0, 475, 0, 178), UDim2.new(0, 350, 0, 242), STYLE.BgPanel, 6)
+    -- =========================================================================
+    -- THEIR OFFER PANEL (bottom)
+    -- =========================================================================
+    local theirPanel = Instance.new("Frame")
+    theirPanel.Name = "TheirPanel"
+    theirPanel.Size = UDim2.new(1, 0, 0, 157)
+    theirPanel.Position = UDim2.fromOffset(0, 168)
+    theirPanel.BackgroundColor3 = Color3.fromRGB(48, 48, 55)
+    theirPanel.BorderSizePixel = 0
+    theirPanel.Parent = rightPanel
+    addCorner(theirPanel, 7)
+    addStroke(theirPanel, Color3.fromRGB(85, 85, 94), 1)
+    self.TheirPanel = theirPanel
     
-    -- Header
-    makeTextLabel(self.TheirOfferPanel, UDim2.new(0, 300, 0, 26), UDim2.new(0, 12, 0, 6), 
-        CONFIG.TradePartnerName .. "'s OFFER", STYLE.TextSecondary, 13, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
+    local theirTitle = createText(
+        theirPanel,
+        self.TargetName:upper() .. "'S OFFER",
+        UDim2.new(1, -20, 0, 32),
+        UDim2.fromOffset(10, 4),
+        15
+    )
+    theirTitle.TextXAlignment = Enum.TextXAlignment.Left
+    self.TheirPanelTitle = theirTitle
     
-    -- 4 item slots for their offer
+    local theirDivider = Instance.new("Frame")
+    theirDivider.Size = UDim2.new(1, -20, 0, 1)
+    theirDivider.Position = UDim2.fromOffset(10, 36)
+    theirDivider.BackgroundColor3 = Color3.fromRGB(85, 85, 94)
+    theirDivider.BorderSizePixel = 0
+    theirDivider.Parent = theirPanel
+    
+    -- Their slots
+    local theirSlotsHolder = Instance.new("Frame")
+    theirSlotsHolder.Name = "TheirSlots"
+    theirSlotsHolder.Size = UDim2.new(1, -20, 0, 112)
+    theirSlotsHolder.Position = UDim2.fromOffset(10, 40)
+    theirSlotsHolder.BackgroundTransparency = 1
+    theirSlotsHolder.Parent = theirPanel
+    self.TheirSlotsHolder = theirSlotsHolder
+    
     self.TheirSlots = {}
-    for i = 1, CONFIG.MaxItems do
-        local slot = makeRoundedFrame(self.TheirOfferPanel, UDim2.new(0, slotSize, 0, 130), 
-            UDim2.new(0, startX + (i - 1) * (slotSize + gap), 0, 32), STYLE.BgSlot, 6)
+    for i = 1, 4 do
+        local slot = Instance.new("Frame")
+        slot.Name = "Slot" .. i
+        slot.Size = UDim2.fromOffset(slotSizeX, 108)
+        slot.Position = UDim2.fromOffset(slotStartX + (i - 1) * (slotSizeX + slotGap), 2)
+        slot.BackgroundColor3 = Color3.fromRGB(62, 62, 70)
+        slot.BorderSizePixel = 0
+        slot.Parent = theirSlotsHolder
+        addCorner(slot, 5)
+        addStroke(slot, Color3.fromRGB(92, 92, 102), 1)
         
-        local border = Instance.new("Frame")
-        border.Size = UDim2.new(1, 0, 1, 0)
-        border.BackgroundTransparency = 1
-        border.BorderSizePixel = 1
-        border.BorderColor3 = STYLE.BorderSlot
-        border.Parent = slot
+        local plus = createText(
+            slot,
+            "+",
+            UDim2.fromScale(1, 1),
+            UDim2.fromScale(0, 0),
+            26
+        )
+        plus.TextColor3 = Color3.fromRGB(135, 135, 145)
+        plus.Name = "PlusIcon"
         
-        local slotBorderUIC = Instance.new("UICorner")
-        slotBorderUIC.CornerRadius = UDim.new(0, 6)
-        slotBorderUIC.Parent = border
-        
-        slot.Data = { index = i, item = nil, border = border }
+        slot.Data = { index = i, item = nil, border = slot:FindFirstChildOfClass("UIStroke") }
         self.TheirSlots[i] = slot
     end
     
-    -- Their value label
-    self.TheirValueLabel = makeTextLabel(self.TheirOfferPanel, UDim2.new(0, 200, 0, 18), UDim2.new(0, 12, 0, 156),
-        "Value: ✦ 0", STYLE.TextValue, 12, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
+    -- Their accepted label
+    local theirAccepted = createText(
+        theirPanel,
+            "READY",
+        UDim2.new(1, -20, 0, 20),
+        UDim2.new(0, 10, 1, -24),
+        12
+    )
+    theirAccepted.Name = "AcceptedLabel"
+    theirAccepted.TextColor3 = Color3.fromRGB(90, 210, 90)
+    self.TheirAcceptedLabel = theirAccepted
     
     -- =========================================================================
-    -- BOTTOM BAR (Accept / Decline / Status)
+    -- VALUE SUMMARY BAR (in bottom area)
     -- =========================================================================
-    self.BottomBar = makeRoundedFrame(self.Main, UDim2.new(1, 0, 0, 60), UDim2.new(0, 0, 1, -60), STYLE.BgBottomBar, 0)
+    local valueBar = Instance.new("Frame")
+    valueBar.Name = "ValueBar"
+    valueBar.Size = UDim2.new(1, -30, 0, 24)
+    valueBar.Position = UDim2.fromOffset(15, 415)
+    valueBar.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+    valueBar.BorderSizePixel = 0
+    valueBar.Parent = main
+    addCorner(valueBar, 4)
+    self.ValueBar = valueBar
     
-    -- Bottom corner rounding
-    local bottomUIC = Instance.new("UICorner")
-    bottomUIC.CornerRadius = UDim.new(0, 8)
-    bottomUIC.Parent = self.BottomBar
+    self.YourValueText = createText(
+        valueBar,
+        "Your value: ✦ 0",
+        UDim2.new(0, 200, 1, 0),
+        UDim2.fromOffset(10, 0),
+        12
+    )
+    self.YourValueText.TextXAlignment = Enum.TextXAlignment.Left
+    self.YourValueText.TextColor3 = Color3.fromRGB(255, 200, 50)
     
-    -- Status text
-    self.StatusLabel = makeTextLabel(self.BottomBar, UDim2.new(0, 400, 1, 0), UDim2.new(0, 16, 0, 0),
-        "Add items to your offer to begin trading", STYLE.TextSecondary, 12, Enum.Font.Gotham, Enum.TextXAlignment.Left)
+    self.WLLabel = createText(
+        valueBar,
+        "",
+        UDim2.new(0, 200, 1, 0),
+        UDim2.fromOffset(210, 0),
+        12
+    )
+    self.WLLabel.TextXAlignment = Enum.TextXAlignment.Left
+    self.WLLabel.TextColor3 = Color3.fromRGB(190, 190, 195)
     
-    -- Win/Loss indicator
-    self.WLLabel = makeTextLabel(self.BottomBar, UDim2.new(0, 300, 0, 18), UDim2.new(0, 16, 0, 24),
-        "", STYLE.TextPrimary, 12, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
+    self.TheirValueText = createText(
+        valueBar,
+        "Their value: ✦ 0",
+        UDim2.new(0, 200, 1, 0),
+        UDim2.fromOffset(430, 0),
+        12
+    )
+    self.TheirValueText.TextXAlignment = Enum.TextXAlignment.Left
+    self.TheirValueText.TextColor3 = Color3.fromRGB(255, 200, 50)
+    
+    -- =========================================================================
+    -- BOTTOM BAR (Accept / Decline)
+    -- =========================================================================
+    local bottomBar = Instance.new("Frame")
+    bottomBar.Name = "BottomBar"
+    bottomBar.Size = UDim2.new(1, 0, 0, 48)
+    bottomBar.Position = UDim2.new(0, 0, 1, -48)
+    bottomBar.BackgroundColor3 = Color3.fromRGB(27, 27, 32)
+    bottomBar.BorderSizePixel = 0
+    bottomBar.Parent = main
+    self.BottomBar = bottomBar
+    
+    local waitingLabel = createText(
+        bottomBar,
+        "Add items to your offer to begin trading",
+        UDim2.new(0, 380, 1, 0),
+        UDim2.fromOffset(18, 0),
+        13
+    )
+    waitingLabel.Name = "WaitingLabel"
+    waitingLabel.TextXAlignment = Enum.TextXAlignment.Left
+    waitingLabel.TextColor3 = Color3.fromRGB(190, 190, 195)
+    self.WaitingLabel = waitingLabel
     
     -- Accept button
-    self.AcceptBtn = Instance.new("TextButton")
-    self.AcceptBtn.Name = "AcceptBtn"
-    self.AcceptBtn.Size = UDim2.new(0, 150, 0, 38)
-    self.AcceptBtn.Position = UDim2.new(1, -320, 0, 11)
-    self.AcceptBtn.BackgroundColor3 = STYLE.AcceptGreen
-    self.AcceptBtn.Text = "  ✓  Accept Trade"
-    self.AcceptBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    self.AcceptBtn.Font = Enum.Font.GothamBold
-    self.AcceptBtn.TextSize = 14
-    self.AcceptBtn.BorderSizePixel = 0
-    self.AcceptBtn.Parent = self.BottomBar
-    self.AcceptBtn.Active = false
+    local acceptButton = Instance.new("TextButton")
+    acceptButton.Name = "AcceptButton"
+    acceptButton.Size = UDim2.fromOffset(135, 36)
+    acceptButton.Position = UDim2.new(1, -290, 0.5, -18)
+    acceptButton.BackgroundColor3 = Color3.fromRGB(52, 165, 76)
+    acceptButton.Text = "ACCEPT"
+    acceptButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    acceptButton.Font = Enum.Font.GothamBold
+    acceptButton.TextSize = 15
+    acceptButton.Parent = bottomBar
+    addCorner(acceptButton, 6)
+    self.AcceptButton = acceptButton
     
-    local acceptUIC = Instance.new("UICorner")
-    acceptUIC.CornerRadius = UDim.new(0, 4)
-    acceptUIC.Parent = self.AcceptBtn
-    
-    -- Decline button
-    self.DeclineBtn = Instance.new("TextButton")
-    self.DeclineBtn.Name = "DeclineBtn"
-    self.DeclineBtn.Size = UDim2.new(0, 130, 0, 38)
-    self.DeclineBtn.Position = UDim2.new(1, -162, 0, 11)
-    self.DeclineBtn.BackgroundColor3 = STYLE.DeclineRed
-    self.DeclineBtn.Text = "  ✕  Decline"
-    self.DeclineBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    self.DeclineBtn.Font = Enum.Font.GothamBold
-    self.DeclineBtn.TextSize = 14
-    self.DeclineBtn.BorderSizePixel = 0
-    self.DeclineBtn.Parent = self.BottomBar
-    
-    local declineUIC = Instance.new("UICorner")
-    declineUIC.CornerRadius = UDim.new(0, 4)
-    declineUIC.Parent = self.DeclineBtn
-    
-    -- Cooldown bar (hidden by default)
-    self.CooldownBar = Instance.new("Frame")
-    self.CooldownBar.Size = UDim2.new(0, 0, 1, 0)
-    self.CooldownBar.Position = UDim2.new(0, 0, 0, 0)
-    self.CooldownBar.BackgroundColor3 = Color3.fromRGB(50, 190, 75)
-    self.CooldownBar.BorderSizePixel = 0
-    self.CooldownBar.Visible = false
-    self.CooldownBar.Parent = self.AcceptBtn
-    
-    local cooldownUIC = Instance.new("UICorner")
-    cooldownUIC.CornerRadius = UDim.new(0, 4)
-    cooldownUIC.Parent = self.CooldownBar
+    -- Cooldown bar inside accept button
+    local cooldownBar = Instance.new("Frame")
+    cooldownBar.Name = "CooldownBar"
+    cooldownBar.Size = UDim2.fromScale(0, 1)
+    cooldownBar.BackgroundColor3 = Color3.fromRGB(60, 190, 80)
+    cooldownBar.BorderSizePixel = 0
+    cooldownBar.Parent = acceptButton
+    cooldownBar.Visible = false
+    self.CooldownBar = cooldownBar
     
     -- Cooldown text overlay
-    self.CooldownText = makeTextLabel(self.AcceptBtn, UDim2.new(1, -4, 1, -4), UDim2.new(0, 2, 0, 2),
-        "", Color3.fromRGB(255, 255, 255), 13, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-    self.CooldownText.ZIndex = 3
+    self.CooldownText = createText(
+        acceptButton,
+        "",
+        UDim2.fromScale(1, 1),
+        UDim2.fromScale(0, 0),
+        13
+    )
     self.CooldownText.Visible = false
+    self.CooldownText.ZIndex = 3
     
-    -- Button events
-    self.DeclineBtn.MouseButton1Click:Connect(function()
-        log("TRADE_DECLINED", "User clicked Decline")
-        self:destroy()
-    end)
+    -- Decline button
+    local declineButton = Instance.new("TextButton")
+    declineButton.Name = "DeclineButton"
+    declineButton.Size = UDim2.fromOffset(125, 36)
+    declineButton.Position = UDim2.new(1, -145, 0.5, -18)
+    declineButton.BackgroundColor3 = Color3.fromRGB(190, 57, 57)
+    declineButton.Text = "DECLINE"
+    declineButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    declineButton.Font = Enum.Font.GothamBold
+    declineButton.TextSize = 15
+    declineButton.Parent = bottomBar
+    addCorner(declineButton, 6)
+    self.DeclineButton = declineButton
     
-    self.DeclineBtn.MouseButton1Down:Connect(function()
-        self.DeclineBtn.BackgroundColor3 = STYLE.DeclineRedHover
-    end)
-    self.DeclineBtn.MouseButton1Up:Connect(function()
-        self.DeclineBtn.BackgroundColor3 = STYLE.DeclineRed
-    end)
-    
-    self.AcceptBtn.MouseButton1Click:Connect(function()
+    -- Wire up buttons
+    acceptButton.MouseButton1Click:Connect(function()
         if not self.CooldownActive and #self.YourOffer > 0 then
             self:startAcceptCooldown()
+        elseif #self.YourOffer == 0 then
+            self:setStatus("Add items to your offer first!", Color3.fromRGB(255, 180, 50))
         end
     end)
     
-    self.AcceptBtn.MouseButton1Down:Connect(function()
-        if not self.CooldownActive then
-            self.AcceptBtn.BackgroundColor3 = STYLE.AcceptGreenHover
-        end
+    declineButton.MouseButton1Click:Connect(function()
+        log("TRADE_DECLINED", "User declined trade")
+        self:destroy()
     end)
-    self.AcceptBtn.MouseButton1Up:Connect(function()
-        if not self.CooldownActive then
-            self.AcceptBtn.BackgroundColor3 = STYLE.AcceptGreen
-        end
-    end)
-    
-    -- Fade in animation
-    self.Main.BackgroundTransparency = 1
-    self.Main.Visible = true
-    for _, child in ipairs(self.Main:GetDescendants()) do
-        if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") then
-            pcall(function() child.BackgroundTransparency = 1 end)
-            pcall(function() child.TextTransparency = 1 end)
-        end
+end
+
+-- =============================================================================
+-- SET STATUS TEXT
+-- =============================================================================
+function TradeUI:setStatus(text, color)
+    self.WaitingLabel.Text = text
+    self.StatusLabel.Text = text
+    if color then
+        self.WaitingLabel.TextColor3 = color
+        self.StatusLabel.TextColor3 = color
     end
-    
-    task.wait(0.05)
-    
-    -- Animate in
-    local allDescendants = self.Main:GetDescendants()
-    for _, child in ipairs(allDescendants) do
-        if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") then
-            local targetBG = 0
-            local targetText = 0
-            if child:IsA("Frame") then
-                targetBG = child.BackgroundTransparency
-                child.BackgroundTransparency = 1
-            elseif child:IsA("TextLabel") or child:IsA("TextButton") then
-                targetText = child.TextTransparency
-                child.TextTransparency = 1
-                if child:IsA("TextButton") then
-                    child.BackgroundTransparency = 1
-                end
-            end
-            
-            task.spawn(function()
-                task.wait(math.random() * 0.05)
-                local tInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-                local props = {}
-                if child:IsA("Frame") or (child:IsA("TextButton") and child ~= self.CloseBtn) then
-                    props.BackgroundTransparency = targetBG
-                end
-                if child:IsA("TextLabel") or child:IsA("TextButton") then
-                    props.TextTransparency = targetText
-                end
-                local tween = TweenService:Create(child, tInfo, props)
-                tween:Play()
-            end)
-        end
-    end
-    
-    self.Main.BackgroundTransparency = 0
-    task.wait(0.3)
-    
-    -- Unhide specific elements
-    self.CooldownBar.Visible = false
-    self.CooldownText.Visible = false
 end
 
 -- =============================================================================
@@ -669,11 +736,11 @@ function TradeUI:setFilter(category)
     self.ActiveFilter = category
     for cat, btn in pairs(self.TabButtons) do
         if cat == category then
-            btn.BackgroundColor3 = STYLE.Accent
+            btn.BackgroundColor3 = Color3.fromRGB(52, 120, 200)
             btn.TextColor3 = Color3.fromRGB(255, 255, 255)
         else
-            btn.BackgroundColor3 = Color3.fromRGB(35, 35, 50)
-            btn.TextColor3 = STYLE.TextSecondary
+            btn.BackgroundColor3 = Color3.fromRGB(48, 48, 56)
+            btn.TextColor3 = Color3.fromRGB(170, 170, 180)
         end
     end
     self:refreshInventory()
@@ -683,10 +750,6 @@ end
 -- POPULATE INVENTORY
 -- =============================================================================
 function TradeUI:populateInventory()
-    self.InventoryItems = {}
-    for _, itemData in ipairs(CONFIG.FakeInventoryItems) do
-        table.insert(self.InventoryItems, itemData)
-    end
     self:setFilter("All")
 end
 
@@ -698,113 +761,125 @@ function TradeUI:refreshInventory()
         end
     end
     
-    -- Filter items
-    self.FilteredItems = {}
+    -- Filter
+    local filteredItems = {}
     for _, item in ipairs(self.InventoryItems) do
-        local category = item.Rarity
-        if item.Rarity == "Chroma" then
-            category = "Chroma"
-        end
-        if self.ActiveFilter == "All" or item.Rarity == self.ActiveFilter or category == self.ActiveFilter then
-            table.insert(self.FilteredItems, item)
+        if self.ActiveFilter == "All" or item.Rarity == self.ActiveFilter then
+            table.insert(filteredItems, item)
         end
     end
     
-    -- Sort by value (descending)
-    table.sort(self.FilteredItems, function(a, b)
+    -- Sort by value descending
+    table.sort(filteredItems, function(a, b)
         return a.Value > b.Value
     end)
     
-    -- Create item rows
-    local yPos = 0
-    local itemHeight = 56
-    local itemGap = 2
+    self.InvTitle.Text = "YOUR INVENTORY  (" .. #filteredItems .. ")"
     
-    for i, item in ipairs(self.FilteredItems) do
-        local row = makeRoundedFrame(self.InvList, UDim2.new(1, -4, 0, itemHeight), 
-            UDim2.new(0, 2, 0, yPos), STYLE.BgItem, 4)
+    -- Create rows
+    local yPos = 0
+    local rowHeight = 50
+    local rowGap = 2
+    
+    for _, item in ipairs(filteredItems) do
+        local isInOffer = false
+        for _, offered in ipairs(self.YourOffer) do
+            if offered.Name == item.Name then
+                isInOffer = true
+                break
+            end
+        end
+        
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, -4, 0, rowHeight)
+        row.Position = UDim2.fromOffset(2, yPos)
+        row.BackgroundColor3 = isInOffer and Color3.fromRGB(50, 60, 55) or Color3.fromRGB(42, 42, 50)
+        row.BorderSizePixel = 0
+        row.Parent = self.InvList
+        addCorner(row, 4)
         row.Data = { item = item }
         
-        -- Rarity color bar (left edge)
-        local rarityColor = STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common
+        -- Rarity bar (left edge)
+        local rarityColor = getRarityColor(item.Rarity)
         local rarityBar = Instance.new("Frame")
-        rarityBar.Size = UDim2.new(0, 3, 1, -6)
-        rarityBar.Position = UDim2.new(0, 4, 0, 3)
+        rarityBar.Size = UDim2.fromOffset(3, rowHeight - 6)
+        rarityBar.Position = UDim2.fromOffset(3, 3)
         rarityBar.BackgroundColor3 = rarityColor
         rarityBar.BorderSizePixel = 0
         rarityBar.Parent = row
+        addCorner(rarityBar, 2)
         
-        local rarityBarUIC = Instance.new("UICorner")
-        rarityBarUIC.CornerRadius = UDim.new(0, 2)
-        rarityBarUIC.Parent = rarityBar
+        -- Item icon
+        local iconBg = Instance.new("Frame")
+        iconBg.Size = UDim2.fromOffset(36, 36)
+        iconBg.Position = UDim2.fromOffset(10, 7)
+        iconBg.BackgroundColor3 = Color3.fromRGB(55, 55, 64)
+        iconBg.BorderSizePixel = 0
+        iconBg.Parent = row
+        addCorner(iconBg, 4)
         
-        -- Item icon placeholder (colored box simulating item thumbnail)
-        local iconBg = makeRoundedFrame(row, UDim2.new(0, 40, 0, 40), UDim2.new(0, 12, 0, 8), 
-            Color3.fromRGB(40, 40, 55), 4)
-        
-        -- Icon letter (simulating knife/gun icon)
         local iconChar = (item.Type == "Knife") and "🔪" or "🔫"
-        local iconLabel = makeTextLabel(iconBg, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0),
-            iconChar, STYLE.TextPrimary, 18, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-        iconLabel.TextYAlignment = Enum.TextYAlignment.Center
-        iconLabel.BackgroundTransparency = 1
+        local iconText = createText(iconBg, iconChar, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 16)
+        iconText.TextYAlignment = Enum.TextYAlignment.Center
+        iconText.TextXAlignment = Enum.TextXAlignment.Center
+        iconText.TextColor3 = Color3.fromRGB(220, 220, 230)
         
         -- Item name
-        local nameLabel = makeTextLabel(row, UDim2.new(0, 200, 0, 20), UDim2.new(0, 58, 0, 6),
-            item.Name, STYLE.TextPrimary, 13, Enum.Font.GothamSemibold, Enum.TextXAlignment.Left)
+        local nameLabel = createText(row, item.Name, UDim2.fromOffset(160, 20), UDim2.fromOffset(52, 6), 13)
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.Font = Enum.Font.GothamSemibold
+        nameLabel.TextColor3 = isInOffer and Color3.fromRGB(130, 190, 130) or Color3.fromRGB(240, 240, 240)
         
-        -- Rarity + Type tag
-        local rarityLabel = makeTextLabel(row, UDim2.new(0, 120, 0, 16), UDim2.new(0, 58, 0, 26),
-            item.Rarity .. " " .. item.Type, rarityColor, 11, Enum.Font.GothamBold, Enum.TextXAlignment.Left)
+        -- Rarity tag
+        local rarityLabel = createText(row, item.Rarity, UDim2.fromOffset(80, 16), UDim2.fromOffset(52, 26), 10)
+        rarityLabel.TextXAlignment = Enum.TextXAlignment.Left
+        rarityLabel.Font = Enum.Font.GothamBold
+        rarityLabel.TextColor3 = rarityColor
         
         -- Value
-        local valueLabel = makeTextLabel(row, UDim2.new(0, 90, 0, 16), UDim2.new(1, -98, 0, 20),
-            string.format("✦ %s", self:formatValue(item.Value)), STYLE.TextValue, 12, Enum.Font.GothamBold, Enum.TextXAlignment.Right)
+        local valueText = createText(row, "✦ " .. formatValue(item.Value), UDim2.fromOffset(80, 18), UDim2.fromOffset(196, 16), 11)
+        valueText.TextXAlignment = Enum.TextXAlignment.Right
+        valueText.TextColor3 = Color3.fromRGB(255, 200, 50)
         
-        -- Value shadow
-        makeTextLabel(row, UDim2.new(0, 90, 0, 16), UDim2.new(1, -98, 0, 18),
-            string.format("✦ %s", self:formatValue(item.Value)), STYLE.TextValueShadow, 12, Enum.Font.GothamBold, Enum.TextXAlignment.Right)
+        -- "ADDED" overlay if already in offer
+        if isInOffer then
+            local addedLabel = createText(row, "ADDED", UDim2.fromOffset(52, 16), UDim2.fromOffset(225, 30), 9)
+            addedLabel.TextXAlignment = Enum.TextXAlignment.Right
+            addedLabel.TextColor3 = Color3.fromRGB(90, 210, 90)
+        end
         
-        -- Add to offer button (click the whole row)
+        -- Click to add item
         row.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            if input.UserInputType == Enum.UserInputType.MouseButton1 and not isInOffer then
                 self:addToOffer(item)
-                row.BackgroundColor3 = STYLE.BgItemHover
-            end
-        end)
-        
-        row.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                row.BackgroundColor3 = STYLE.BgItem
             end
         end)
         
         row.MouseEnter:Connect(function()
-            row.BackgroundColor3 = STYLE.BgItemHover
+            if not isInOffer then
+                row.BackgroundColor3 = Color3.fromRGB(52, 52, 62)
+            end
         end)
         
         row.MouseLeave:Connect(function()
-            row.BackgroundColor3 = STYLE.BgItem
+            row.BackgroundColor3 = isInOffer and Color3.fromRGB(50, 60, 55) or Color3.fromRGB(42, 42, 50)
         end)
         
-        yPos = yPos + itemHeight + itemGap
+        yPos = yPos + rowHeight + rowGap
     end
     
-    self.InvList.CanvasSize = UDim2.new(0, 0, 0, yPos + 4)
+    self.InvList.CanvasSize = UDim2.fromOffset(0, yPos + 4)
 end
 
 -- =============================================================================
--- POPULATE THEIR OFFER
+-- POPULATE THEIR OFFER SLOTS
 -- =============================================================================
-function TradeUI:populateTheirOffer()
-    self.TheirOffer = {}
-    for i, itemData in ipairs(CONFIG.TheirOfferItems) do
-        if i <= CONFIG.MaxItems then
-            table.insert(self.TheirOffer, itemData)
-            self:updateTheirSlot(i, itemData)
+function TradeUI:populateTheirOfferSlots()
+    for i, item in ipairs(self.TheirOffer) do
+        if i <= 4 then
+            self:updateTheirSlot(i, item)
         end
     end
-    self:updateValues()
 end
 
 -- =============================================================================
@@ -814,79 +889,70 @@ function TradeUI:updateTheirSlot(slotIndex, item)
     local slot = self.TheirSlots[slotIndex]
     if not slot then return end
     
-    -- Clear slot
+    -- Clear children except stroke and plus
     for _, child in ipairs(slot:GetChildren()) do
-        if child:IsA("TextLabel") or child:IsA("ImageLabel") then
-            if child ~= slot:FindFirstChildOfClass("UICorner") and child ~= slot.Data.border then
-                child:Destroy()
-            end
+        if child:IsA("TextLabel") and child.Name ~= "PlusIcon" then
+            child:Destroy()
+        end
+        if child:IsA("Frame") then
+            child:Destroy()
         end
     end
     
+    -- Hide plus icon
+    local plus = slot:FindFirstChild("PlusIcon")
+    if plus then
+        plus.Visible = (item == nil)
+    end
+    
     if not item then
-        slot.Data.border.BorderColor3 = STYLE.BorderSlot
+        addStroke(slot, Color3.fromRGB(92, 92, 102), 1)
         return
     end
     
-    slot.Data.item = item
-    slot.Data.border.BorderColor3 = STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common
+    local rarityColor = getRarityColor(item.Rarity)
+    addStroke(slot, rarityColor, 1.5)
     
-    -- Item icon
+    -- Rarity glow background
     local glow = Instance.new("Frame")
-    glow.Size = UDim2.new(1, 0, 1, 0)
-    glow.BackgroundColor3 = STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common
-    glow.BackgroundTransparency = 0.85
+    glow.Size = UDim2.fromScale(1, 1)
+    glow.BackgroundColor3 = rarityColor
+    glow.BackgroundTransparency = 0.88
     glow.BorderSizePixel = 0
     glow.Parent = slot
+    addCorner(glow, 5)
     
-    local glowUIC = Instance.new("UICorner")
-    glowUIC.CornerRadius = UDim.new(0, 6)
-    glowUIC.Parent = glow
-    
-    -- Icon
-    local iconBg = makeRoundedFrame(slot, UDim2.new(0, 64, 0, 64), UDim2.new(0.5, -32, 0.5, -48), 
-        Color3.fromRGB(35, 35, 50), 6)
+    -- Icon circle
+    local iconBg = Instance.new("Frame")
+    iconBg.Size = UDim2.fromOffset(48, 48)
+    iconBg.Position = UDim2.new(0.5, -24, 0, 8)
+    iconBg.BackgroundColor3 = Color3.fromRGB(48, 48, 56)
     iconBg.BorderSizePixel = 1
-    iconBg.BorderColor3 = STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common
+    iconBg.BorderColor3 = rarityColor
+    iconBg.Parent = slot
+    addCorner(iconBg, 24)
     
     local iconChar = (item.Type == "Knife") and "🔪" or "🔫"
-    local iconLabel = makeTextLabel(iconBg, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0),
-        iconChar, STYLE.TextPrimary, 28, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-    iconLabel.TextYAlignment = Enum.TextYAlignment.Center
+    local iconText = createText(iconBg, iconChar, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 22)
+    iconText.TextYAlignment = Enum.TextYAlignment.Center
+    iconText.TextXAlignment = Enum.TextXAlignment.Center
     
     -- Item name
-    makeTextLabel(slot, UDim2.new(1, -8, 0, 18), UDim2.new(0, 4, 0, 26),
-        item.Name, STYLE.TextPrimary, 11, Enum.Font.GothamSemibold, Enum.TextXAlignment.Center)
+    local nameText = createText(slot, item.Name, UDim2.new(1, -8, 0, 16), UDim2.fromOffset(4, 58), 10)
+    nameText.TextXAlignment = Enum.TextXAlignment.Center
+    nameText.Font = Enum.Font.GothamSemibold
+    nameText.TextColor3 = Color3.fromRGB(230, 230, 240)
     
     -- Rarity
-    makeTextLabel(slot, UDim2.new(1, -8, 0, 14), UDim2.new(0, 4, 0, 44),
-        item.Rarity, STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common, 9, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    local rarityText = createText(slot, item.Rarity, UDim2.new(1, -8, 0, 14), UDim2.fromOffset(4, 74), 9)
+    rarityText.TextXAlignment = Enum.TextXAlignment.Center
+    rarityText.Font = Enum.Font.GothamBold
+    rarityText.TextColor3 = rarityColor
     
     -- Value
-    makeTextLabel(slot, UDim2.new(1, -8, 0, 16), UDim2.new(0, 4, 0, 58),
-        "✦ " .. self:formatValue(item.Value), STYLE.TextValue, 11, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-    
-    -- Remove button (if it's your offer slot)
-    if slot.Parent == self.YourOfferPanel then
-        local removeBtn = Instance.new("TextButton")
-        removeBtn.Size = UDim2.new(0, 20, 0, 20)
-        removeBtn.Position = UDim2.new(1, -24, 0, 2)
-        removeBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-        removeBtn.Text = "✕"
-        removeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-        removeBtn.Font = Enum.Font.GothamBold
-        removeBtn.TextSize = 11
-        removeBtn.BorderSizePixel = 0
-        removeBtn.Parent = slot
-        
-        local remUIC = Instance.new("UICorner")
-        remUIC.CornerRadius = UDim.new(0, 3)
-        remUIC.Parent = removeBtn
-        
-        removeBtn.MouseButton1Click:Connect(function()
-            self:removeFromOffer(slot.Data.index)
-        end)
-    end
+    local valueText = createText(slot, "✦ " .. formatValue(item.Value), UDim2.new(1, -8, 0, 14), UDim2.fromOffset(4, 88), 10)
+    valueText.TextXAlignment = Enum.TextXAlignment.Center
+    valueText.TextColor3 = Color3.fromRGB(255, 200, 50)
 end
 
 -- =============================================================================
@@ -896,68 +962,84 @@ function TradeUI:updateYourSlot(slotIndex, item)
     local slot = self.YourSlots[slotIndex]
     if not slot then return end
     
-    -- Clear slot
+    -- Clear children except stroke and plus
     for _, child in ipairs(slot:GetChildren()) do
-        if child:IsA("TextLabel") or child:IsA("TextButton") or child:IsA("ImageLabel") or child:IsA("Frame") then
-            if child ~= slot.Data.border and child ~= slot.Data.emptyIcon and child ~= slot:FindFirstChild("UICorner") then
-                child:Destroy()
-            end
+        if child:IsA("TextLabel") and child.Name ~= "PlusIcon" then
+            child:Destroy()
+        end
+        if child:IsA("Frame") or child:IsA("TextButton") then
+            child:Destroy()
         end
     end
     
-    slot.Data.emptyIcon.Visible = (item == nil)
-    slot.Data.border.BorderColor3 = (item and (STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common)) or STYLE.BorderSlot
+    -- Hide/show plus icon
+    local plus = slot:FindFirstChild("PlusIcon")
+    if plus then
+        plus.Visible = (item == nil)
+    end
     
-    if not item then return end
+    if not item then
+        addStroke(slot, Color3.fromRGB(92, 92, 102), 1)
+        slot.Data.item = nil
+        return
+    end
     
+    local rarityColor = getRarityColor(item.Rarity)
+    addStroke(slot, rarityColor, 1.5)
     slot.Data.item = item
     
     -- Rarity glow
     local glow = Instance.new("Frame")
-    glow.Size = UDim2.new(1, 0, 1, 0)
-    glow.BackgroundColor3 = STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common
-    glow.BackgroundTransparency = 0.85
+    glow.Size = UDim2.fromScale(1, 1)
+    glow.BackgroundColor3 = rarityColor
+    glow.BackgroundTransparency = 0.88
     glow.BorderSizePixel = 0
     glow.Parent = slot
-    
-    local glowUIC = Instance.new("UICorner")
-    glowUIC.CornerRadius = UDim.new(0, 6)
-    glowUIC.Parent = glow
+    addCorner(glow, 5)
     
     -- Icon
-    local iconBg = makeRoundedFrame(slot, UDim2.new(0, 60, 0, 60), UDim2.new(0.5, -30, 0.5, -44), 
-        Color3.fromRGB(35, 35, 50), 6)
+    local iconBg = Instance.new("Frame")
+    iconBg.Size = UDim2.fromOffset(48, 48)
+    iconBg.Position = UDim2.new(0.5, -24, 0, 8)
+    iconBg.BackgroundColor3 = Color3.fromRGB(48, 48, 56)
     iconBg.BorderSizePixel = 1
-    iconBg.BorderColor3 = STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common
+    iconBg.BorderColor3 = rarityColor
+    iconBg.Parent = slot
+    addCorner(iconBg, 24)
     
     local iconChar = (item.Type == "Knife") and "🔪" or "🔫"
-    local iconLabel = makeTextLabel(iconBg, UDim2.new(1, 0, 1, 0), UDim2.new(0, 0, 0, 0),
-        iconChar, STYLE.TextPrimary, 24, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-    iconLabel.TextYAlignment = Enum.TextYAlignment.Center
+    local iconText = createText(iconBg, iconChar, UDim2.fromScale(1, 1), UDim2.fromScale(0, 0), 22)
+    iconText.TextYAlignment = Enum.TextYAlignment.Center
+    iconText.TextXAlignment = Enum.TextXAlignment.Center
     
     -- Item name
-    makeTextLabel(slot, UDim2.new(1, -8, 0, 16), UDim2.new(0, 4, 0, 22),
-        item.Name, STYLE.TextPrimary, 10, Enum.Font.GothamSemibold, Enum.TextXAlignment.Center)
+    local nameText = createText(slot, item.Name, UDim2.new(1, -8, 0, 16), UDim2.fromOffset(4, 58), 10)
+    nameText.TextXAlignment = Enum.TextXAlignment.Center
+    nameText.Font = Enum.Font.GothamSemibold
     
-    -- Value under name
-    makeTextLabel(slot, UDim2.new(1, -8, 0, 14), UDim2.new(0, 4, 0, 38),
-        "✦ " .. self:formatValue(item.Value), STYLE.TextValue, 10, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    -- Rarity
+    local rarityText = createText(slot, item.Rarity, UDim2.new(1, -8, 0, 14), UDim2.fromOffset(4, 74), 9)
+    rarityText.TextXAlignment = Enum.TextXAlignment.Center
+    rarityText.Font = Enum.Font.GothamBold
+    rarityText.TextColor3 = rarityColor
+    
+    -- Value
+    local valueText = createText(slot, "✦ " .. formatValue(item.Value), UDim2.new(1, -8, 0, 14), UDim2.fromOffset(4, 88), 10)
+    valueText.TextXAlignment = Enum.TextXAlignment.Center
+    valueText.TextColor3 = Color3.fromRGB(255, 200, 50)
     
     -- Remove button
     local removeBtn = Instance.new("TextButton")
-    removeBtn.Size = UDim2.new(0, 18, 0, 18)
-    removeBtn.Position = UDim2.new(1, -22, 0, 2)
-    removeBtn.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
-    removeBtn.Text = "✕"
+    removeBtn.Size = UDim2.fromOffset(18, 18)
+    removeBtn.Position = UDim2.new(1, -20, 0, 2)
+    removeBtn.BackgroundColor3 = Color3.fromRGB(160, 45, 45)
+    removeBtn.Text = "×"
     removeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     removeBtn.Font = Enum.Font.GothamBold
-    removeBtn.TextSize = 10
+    removeBtn.TextSize = 13
     removeBtn.BorderSizePixel = 0
     removeBtn.Parent = slot
-    
-    local remUIC = Instance.new("UICorner")
-    remUIC.CornerRadius = UDim.new(0, 3)
-    remUIC.Parent = removeBtn
+    addCorner(removeBtn, 3)
     
     removeBtn.MouseButton1Click:Connect(function()
         self:removeFromOffer(slot.Data.index)
@@ -968,33 +1050,28 @@ end
 -- ADD ITEM TO OFFER
 -- =============================================================================
 function TradeUI:addToOffer(item)
-    if #self.YourOffer >= CONFIG.MaxItems then
-        self:setStatus("You can only trade up to " .. CONFIG.MaxItems .. " items!", Color3.fromRGB(255, 100, 100))
+    if #self.YourOffer >= 4 then
+        self:setStatus("You can only trade up to 4 items!", Color3.fromRGB(255, 180, 50))
         return
     end
     
     -- Check if already added
-    for _, offered in ipairs(self.YourOffer) do
-        if offered.Name == item.Name then
+    for _, existing in ipairs(self.YourOffer) do
+        if existing.Name == item.Name then
             self:setStatus("Item already in your offer!", Color3.fromRGB(255, 200, 50))
             return
         end
     end
     
     table.insert(self.YourOffer, item)
+    log("ITEM_ADDED", string.format("Added %s (✦%s) to offer", item.Name, formatValue(item.Value)))
+    self:setStatus(string.format("Added %s (✦%s) to your offer", item.Name, formatValue(item.Value)), Color3.fromRGB(180, 220, 180))
     
-    -- Find empty slot
-    for i = 1, CONFIG.MaxItems do
-        if not self.YourSlots[i].Data.item then
-            self:updateYourSlot(i, item)
-            break
-        end
-    end
+    -- Rebuild all slots
+    self:rebuildYourSlots()
     
-    self:updateValues()
-    self:updateOfferHeader()
-    log("ITEM_ADDED", string.format("Added %s (✦%d) to offer", item.Name, item.Value))
-    self:setStatus(string.format("Added %s (✦%s) to your offer", item.Name, self:formatValue(item.Value)), STYLE.TextPrimary)
+    -- Reset accept state
+    self:resetAcceptState()
 end
 
 -- =============================================================================
@@ -1006,33 +1083,44 @@ function TradeUI:removeFromOffer(slotIndex)
     
     local itemName = slot.Data.item.Name
     slot.Data.item = nil
-    self:updateYourSlot(slotIndex, nil)
     
-    -- Remove from list and shift remaining items
+    -- Rebuild offer list from slots
     local newOffer = {}
-    for i = 1, CONFIG.MaxItems do
-        local s = self.YourSlots[i]
-        if s.Data.item then
-            table.insert(newOffer, s.Data.item)
+    for i = 1, 4 do
+        if self.YourSlots[i].Data.item then
+            table.insert(newOffer, self.YourSlots[i].Data.item)
         end
     end
     self.YourOffer = newOffer
     
-    -- Re-populate slots
-    for i = 1, CONFIG.MaxItems do
-        self.YourSlots[i].Data.item = nil
+    self:rebuildYourSlots()
+    self:resetAcceptState()
+    
+    log("ITEM_REMOVED", string.format("Removed %s from offer", itemName))
+    self:setStatus(string.format("Removed %s from your offer", itemName), Color3.fromRGB(190, 190, 195))
+end
+
+-- =============================================================================
+-- REBUILD YOUR SLOTS
+-- =============================================================================
+function TradeUI:rebuildYourSlots()
+    -- Clear all slots
+    for i = 1, 4 do
         self:updateYourSlot(i, nil)
     end
+    
+    -- Fill with current offer
     for i, item in ipairs(self.YourOffer) do
-        self.YourSlots[i].Data.item = item
         self:updateYourSlot(i, item)
     end
     
     self:updateValues()
-    self:updateOfferHeader()
-    self:resetAcceptState()
-    log("ITEM_REMOVED", string.format("Removed %s from offer", itemName))
-    self:setStatus(string.format("Removed %s from your offer", itemName), STYLE.TextSecondary)
+    self:refreshInventory()
+    self:updateYourPanelTitle()
+end
+
+function TradeUI:updateYourPanelTitle()
+    self.YourPanelTitle.Text = string.format("YOUR OFFER  (%d/4)", #self.YourOffer)
 end
 
 -- =============================================================================
@@ -1043,65 +1131,60 @@ function TradeUI:updateValues()
     for _, item in ipairs(self.YourOffer) do
         yourTotal = yourTotal + item.Value
     end
-    
     local theirTotal = 0
     for _, item in ipairs(self.TheirOffer) do
         theirTotal = theirTotal + item.Value
     end
     
-    self.YourValueLabel.Text = string.format("Value: ✦ %s", self:formatValue(yourTotal))
-    self.TheirValueLabel.Text = string.format("Value: ✦ %s", self:formatValue(theirTotal))
+    self.YourValueText.Text = "Your value: ✦ " .. formatValue(yourTotal)
+    self.TheirValueText.Text = "Their value: ✦ " .. formatValue(theirTotal)
     
-    -- Win/Loss calculation
+    -- Win/Loss
     local diff = theirTotal - yourTotal
     if #self.YourOffer > 0 then
         if diff > 0 then
-            self.WLLabel.Text = string.format("▲ WIN  (+✦ %s)", self:formatValue(diff))
-            self.WLLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
+            self.WLLabel.Text = string.format("▲ WIN  (+✦%s)", formatValue(diff))
+            self.WLLabel.TextColor3 = Color3.fromRGB(80, 220, 80)
         elseif diff < 0 then
-            self.WLLabel.Text = string.format("▼ LOSS  (✦ %s)", self:formatValue(math.abs(diff)))
-            self.WLLabel.TextColor3 = Color3.fromRGB(255, 70, 70)
+            self.WLLabel.Text = string.format("▼ LOSS  (✦%s)", formatValue(math.abs(diff)))
+            self.WLLabel.TextColor3 = Color3.fromRGB(235, 80, 80)
         else
             self.WLLabel.Text = "— FAIR TRADE —"
-            self.WLLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+            self.WLLabel.TextColor3 = Color3.fromRGB(190, 190, 195)
         end
     else
         self.WLLabel.Text = ""
     end
 end
 
-function TradeUI:updateOfferHeader()
-    self.YourOfferHeader.Text = string.format("YOUR OFFER  (%d/%d)", #self.YourOffer, CONFIG.MaxItems)
-end
-
 -- =============================================================================
--- ACCEPT COOLDOWN (3-second realistic delay)
+-- ACCEPT COOLDOWN (3.5 seconds, matching real MM2)
 -- =============================================================================
 function TradeUI:startAcceptCooldown()
     if self.CooldownActive then return end
-    if #self.YourOffer == 0 then
-        self:setStatus("Add items to your offer first!", Color3.fromRGB(255, 200, 50))
-        return
-    end
+    if #self.YourOffer == 0 then return end
     
     self.CooldownActive = true
-    self.AcceptBtn.Text = ""
-    self.AcceptBtn.Active = false
+    self.AcceptButton.Text = ""
+    self.AcceptButton.BackgroundColor3 = Color3.fromRGB(45, 100, 55)
     self.CooldownBar.Visible = true
     self.CooldownText.Visible = true
-    self.AcceptBtn.BackgroundColor3 = STYLE.AcceptGreenDisabled
     
-    -- Simulate the real MM2 cooldown
+    -- Update status
+    self.YourAcceptedLabel.Text = "ACCEPTING..."
+    self.YourAcceptedLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+    self:setStatus("Accepting trade... please wait", Color3.fromRGB(255, 200, 50))
+    
+    log("COOLDOWN_START", "Accept cooldown started (3.5s)")
+    
     local duration = CONFIG.AcceptCooldown
     local elapsed = 0
-    local cooldownId = tick()
-    self._cooldownId = cooldownId
-    
-    log("ACCEPT_COOLDOWN_START", string.format("Starting %.1fs cooldown", duration))
+    local cdId = tick()
+    self._cdId = cdId
     
     local conn
     conn = RunService.Heartbeat:Connect(function(dt)
-        if self._cooldownId ~= cooldownId then
+        if self._cdId ~= cdId then
             conn:Disconnect()
             return
         end
@@ -1110,8 +1193,8 @@ function TradeUI:startAcceptCooldown()
         local progress = math.min(elapsed / duration, 1)
         local remaining = math.max(duration - elapsed, 0)
         
-        self.CooldownBar.Size = UDim2.new(progress, 0, 1, 0)
-        self.CooldownText.Text = string.format("Accepting...  %.1fs", remaining)
+        self.CooldownBar.Size = UDim2.fromScale(progress, 1)
+        self.CooldownText.Text = string.format("%.1fs", remaining)
         
         if progress >= 1 then
             conn:Disconnect()
@@ -1121,182 +1204,229 @@ function TradeUI:startAcceptCooldown()
 end
 
 function TradeUI:completeAccept()
-    self.CooldownBar.Size = UDim2.new(1, 0, 1, 0)
-    task.wait(0.15)
+    self.CooldownBar.Size = UDim2.fromScale(1, 1)
+    task.wait(0.2)
     
     self.Accepted = true
     self.CooldownActive = false
     self.CooldownBar.Visible = false
     self.CooldownText.Visible = false
-    self.AcceptBtn.Text = "  ✓  Accepted!"
-    self.AcceptBtn.BackgroundColor3 = STYLE.AcceptGreen
-    self.AcceptBtn.Active = true
+    self.AcceptButton.Text = "ACCEPTED ✓"
+    self.AcceptButton.BackgroundColor3 = Color3.fromRGB(52, 165, 76)
     
-    log("TRADE_ACCEPTED", "User accepted the trade")
-    self:setStatus("You accepted the trade! Waiting for " .. CONFIG.TradePartnerName .. "...", Color3.fromRGB(0, 255, 100))
+    self.YourAcceptedLabel.Text = "ACCEPTED ✓"
+    self.YourAcceptedLabel.TextColor3 = Color3.fromRGB(80, 220, 80)
     
-    -- After a short delay, show final confirmation screen (like real MM2)
-    task.wait(1.5)
+    log("TRADE_ACCEPTED", "User accepted the trade (step 1)")
+    self:setStatus("You accepted! Waiting for " .. CONFIG.TradePartnerName .. " to confirm...", Color3.fromRGB(80, 220, 80))
+    
+    -- Show final confirmation after a short delay (real MM2 behavior)
+    task.wait(1.2)
     self:showConfirmationScreen()
 end
 
 function TradeUI:resetAcceptState()
     self.Accepted = false
     self.CooldownActive = false
+    self.CooldownBar.Size = UDim2.fromScale(0, 1)
     self.CooldownBar.Visible = false
     self.CooldownText.Visible = false
-    self.AcceptBtn.Text = "  ✓  Accept Trade"
-    self.AcceptBtn.BackgroundColor3 = STYLE.AcceptGreen
-    self.AcceptBtn.Active = true
-    self.CooldownBar.Size = UDim2.new(0, 0, 1, 0)
-    self._cooldownId = nil
+    self._cdId = nil
+    self.AcceptButton.Text = "ACCEPT"
+    self.AcceptButton.BackgroundColor3 = Color3.fromRGB(52, 165, 76)
+    self.YourAcceptedLabel.Text = "WAITING"
+    self.YourAcceptedLabel.TextColor3 = Color3.fromRGB(190, 190, 195)
 end
 
 -- =============================================================================
--- FINAL CONFIRMATION SCREEN (identical to real MM2)
+-- FINAL CONFIRMATION SCREEN (exact MM2 replica)
 -- =============================================================================
 function TradeUI:showConfirmationScreen()
-    -- Create overlay confirmation
+    if self._confirmOpen then return end
+    self._confirmOpen = true
+    
     local confirmGui = Instance.new("ScreenGui")
-    confirmGui.Name = "MM2ConfirmScreen"
+    confirmGui.Name = "ConfirmScreen"
     confirmGui.ResetOnSpawn = false
-    confirmGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     confirmGui.Parent = playerGui
     
     local overlay = Instance.new("Frame")
-    overlay.Size = UDim2.new(1, 0, 1, 0)
+    overlay.Size = UDim2.fromScale(1, 1)
     overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    overlay.BackgroundTransparency = 0.65
+    overlay.BackgroundTransparency = 0.55
     overlay.BorderSizePixel = 0
     overlay.Active = true
     overlay.Parent = confirmGui
     
-    -- Confirmation window (slightly smaller)
-    local confirmWin = makeRoundedFrame(confirmGui, UDim2.new(0, 700, 0, 380), 
-        UDim2.new(0.5, -350, 0.5, -190), STYLE.BgDark, 10)
+    local confirmWin = Instance.new("Frame")
+    confirmWin.AnchorPoint = Vector2.new(0.5, 0.5)
+    confirmWin.Position = UDim2.fromScale(0.5, 0.5)
+    confirmWin.Size = UDim2.fromOffset(680, 400)
+    confirmWin.BackgroundColor3 = Color3.fromRGB(38, 38, 44)
+    confirmWin.BorderSizePixel = 0
+    confirmWin.Parent = confirmGui
+    addCorner(confirmWin, 8)
+    addStroke(confirmWin, Color3.fromRGB(15, 15, 18), 2)
     
-    -- Top border accent
+    -- Top accent bar
     local topAccent = Instance.new("Frame")
     topAccent.Size = UDim2.new(1, 0, 0, 3)
     topAccent.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
     topAccent.BorderSizePixel = 0
     topAccent.Parent = confirmWin
+    addCorner(topAccent, 8)
+    topAccent.ClipsDescendants = true
     
-    local topAccentUIC = Instance.new("UICorner")
-    topAccentUIC.CornerRadius = UDim.new(0, 10)
-    topAccentUIC.Parent = topAccent
+    -- Warning + title
+    local confirmTitle = createText(confirmWin, "⚠  FINAL CONFIRMATION", UDim2.new(1, 0, 0, 38), UDim2.fromOffset(0, 10), 20)
+    confirmTitle.TextXAlignment = Enum.TextXAlignment.Center
+    confirmTitle.TextColor3 = Color3.fromRGB(255, 200, 50)
     
-    -- Warning icon + title
-    makeTextLabel(confirmWin, UDim2.new(1, 0, 0, 36), UDim2.new(0, 0, 0, 14),
-        "⚠  FINAL CONFIRMATION", Color3.fromRGB(255, 200, 50), 18, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    local subText = createText(confirmWin, "Review the trade carefully before confirming", UDim2.new(1, -40, 0, 20), UDim2.fromOffset(20, 50), 13)
+    subText.TextXAlignment = Enum.TextXAlignment.Center
+    subText.TextColor3 = Color3.fromRGB(190, 190, 195)
     
-    makeTextLabel(confirmWin, UDim2.new(1, -40, 0, 20), UDim2.new(0, 20, 0, 52),
-        "Review the trade carefully. This cannot be undone.", STYLE.TextSecondary, 12, Enum.Font.Gotham, Enum.TextXAlignment.Center)
+    -- Two columns
+    local yourSide = Instance.new("Frame")
+    yourSide.Size = UDim2.new(0, 315, 0, 220)
+    yourSide.Position = UDim2.fromOffset(12, 80)
+    yourSide.BackgroundColor3 = Color3.fromRGB(48, 48, 55)
+    yourSide.BorderSizePixel = 0
+    yourSide.Parent = confirmWin
+    addCorner(yourSide, 7)
+    addStroke(yourSide, Color3.fromRGB(85, 85, 94), 1)
     
-    -- Your items in confirmation
-    local yourSide = makeRoundedFrame(confirmWin, UDim2.new(0, 320, 0, 200), UDim2.new(0, 15, 0, 80), STYLE.BgPanel, 6)
-    makeTextLabel(yourSide, UDim2.new(1, -10, 0, 24), UDim2.new(0, 5, 0, 4),
-        "YOU GIVE", Color3.fromRGB(255, 100, 100), 13, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    local youGiveTitle = createText(yourSide, "YOU GIVE", UDim2.new(1, -16, 0, 30), UDim2.fromOffset(8, 4), 14)
+    youGiveTitle.TextXAlignment = Enum.TextXAlignment.Left
+    youGiveTitle.TextColor3 = Color3.fromRGB(255, 120, 120)
     
-    local yourConfirmY = 30
-    for i, item in ipairs(self.YourOffer) do
-        local rarityColor = STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common
-        local itemRow = makeTextLabel(yourSide, UDim2.new(1, -20, 0, 22), UDim2.new(0, 10, 0, yourConfirmY),
-            string.format("%s  %s  <font color='rgb(255,200,50)'>✦%s</font>", 
-                (item.Type == "Knife") and "🔪" or "🔫", item.Name, self:formatValue(item.Value)),
-            STYLE.TextPrimary, 13, Enum.Font.GothamSemibold, Enum.TextXAlignment.Left)
-        itemRow.RichText = true
-        yourConfirmY = yourConfirmY + 24
+    local yourDiv = Instance.new("Frame")
+    yourDiv.Size = UDim2.new(1, -16, 0, 1)
+    yourDiv.Position = UDim2.fromOffset(8, 34)
+    yourDiv.BackgroundColor3 = Color3.fromRGB(85, 85, 94)
+    yourDiv.BorderSizePixel = 0
+    yourDiv.Parent = yourSide
+    
+    local yourY = 42
+    if #self.YourOffer == 0 then
+        createText(yourSide, "Nothing", UDim2.new(1, -16, 0, 20), UDim2.fromOffset(8, 44), 13):SetAttribute("TextColor3", Color3.fromRGB(140, 140, 150))
+    else
+        local yourTotal = 0
+        for _, item in ipairs(self.YourOffer) do
+            local rarityColor = getRarityColor(item.Rarity)
+            local itemText = createText(yourSide, 
+                string.format("  %s  %s    ✦ %s", (item.Type == "Knife") and "🔪" or "🔫", item.Name, formatValue(item.Value)),
+                UDim2.new(1, -16, 0, 22), UDim2.fromOffset(8, yourY), 13)
+            itemText.TextXAlignment = Enum.TextXAlignment.Left
+            itemText.Font = Enum.Font.GothamSemibold
+            itemText.TextColor3 = Color3.fromRGB(230, 230, 240)
+            itemText.RichText = true
+            yourY = yourY + 24
+            yourTotal = yourTotal + item.Value
+        end
+        
+        local totalText = createText(yourSide, "Total: ✦ " .. formatValue(yourTotal), UDim2.new(1, -16, 0, 18), UDim2.fromOffset(8, 196), 12)
+        totalText.TextXAlignment = Enum.TextXAlignment.Left
+        totalText.TextColor3 = Color3.fromRGB(255, 200, 50)
     end
     
-    -- Their items in confirmation
-    local theirSide = makeRoundedFrame(confirmWin, UDim2.new(0, 320, 0, 200), UDim2.new(0, 355, 0, 80), STYLE.BgPanel, 6)
-    makeTextLabel(theirSide, UDim2.new(1, -10, 0, 24), UDim2.new(0, 5, 0, 4),
-        "YOU RECEIVE", Color3.fromRGB(0, 255, 100), 13, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    -- Their side
+    local theirSide = Instance.new("Frame")
+    theirSide.Size = UDim2.new(0, 315, 0, 220)
+    theirSide.Position = UDim2.fromOffset(345, 80)
+    theirSide.BackgroundColor3 = Color3.fromRGB(48, 48, 55)
+    theirSide.BorderSizePixel = 0
+    theirSide.Parent = confirmWin
+    addCorner(theirSide, 7)
+    addStroke(theirSide, Color3.fromRGB(85, 85, 94), 1)
     
-    local theirConfirmY = 30
-    for i, item in ipairs(self.TheirOffer) do
-        local rarityColor = STYLE.Rarity[item.Rarity] or STYLE.Rarity.Common
-        local itemRow = makeTextLabel(theirSide, UDim2.new(1, -20, 0, 22), UDim2.new(0, 10, 0, theirConfirmY),
-            string.format("%s  %s  <font color='rgb(255,200,50)'>✦%s</font>", 
-                (item.Type == "Knife") and "🔪" or "🔫", item.Name, self:formatValue(item.Value)),
-            STYLE.TextPrimary, 13, Enum.Font.GothamSemibold, Enum.TextXAlignment.Left)
-        itemRow.RichText = true
-        theirConfirmY = theirConfirmY + 24
-    end
+    local youGetTitle = createText(theirSide, "YOU RECEIVE", UDim2.new(1, -16, 0, 30), UDim2.fromOffset(8, 4), 14)
+    youGetTitle.TextXAlignment = Enum.TextXAlignment.Left
+    youGetTitle.TextColor3 = Color3.fromRGB(80, 220, 80)
     
-    -- Total value at bottom
-    local yourTotal = 0
-    for _, item in ipairs(self.YourOffer) do yourTotal = yourTotal + item.Value end
+    local theirDiv = Instance.new("Frame")
+    theirDiv.Size = UDim2.new(1, -16, 0, 1)
+    theirDiv.Position = UDim2.fromOffset(8, 34)
+    theirDiv.BackgroundColor3 = Color3.fromRGB(85, 85, 94)
+    theirDiv.BorderSizePixel = 0
+    theirDiv.Parent = theirSide
+    
+    local theirY = 42
     local theirTotal = 0
-    for _, item in ipairs(self.TheirOffer) do theirTotal = theirTotal + item.Value end
+    for _, item in ipairs(self.TheirOffer) do
+        local rarityColor = getRarityColor(item.Rarity)
+        local itemText = createText(theirSide, 
+            string.format("  %s  %s    ✦ %s", (item.Type == "Knife") and "🔪" or "🔫", item.Name, formatValue(item.Value)),
+            UDim2.new(1, -16, 0, 22), UDim2.fromOffset(8, theirY), 13)
+        itemText.TextXAlignment = Enum.TextXAlignment.Left
+        itemText.Font = Enum.Font.GothamSemibold
+        itemText.TextColor3 = Color3.fromRGB(230, 230, 240)
+        theirY = theirY + 24
+        theirTotal = theirTotal + item.Value
+    end
     
-    makeTextLabel(confirmWin, UDim2.new(0, 320, 0, 20), UDim2.new(0, 15, 0, 288),
-        string.format("Total: ✦ %s", self:formatValue(yourTotal)), STYLE.TextValue, 13, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-    makeTextLabel(confirmWin, UDim2.new(0, 320, 0, 20), UDim2.new(0, 355, 0, 288),
-        string.format("Total: ✦ %s", self:formatValue(theirTotal)), STYLE.TextValue, 13, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    local totalText2 = createText(theirSide, "Total: ✦ " .. formatValue(theirTotal), UDim2.new(1, -16, 0, 18), UDim2.fromOffset(8, 196), 12)
+    totalText2.TextXAlignment = Enum.TextXAlignment.Left
+    totalText2.TextColor3 = Color3.fromRGB(255, 200, 50)
     
     -- Confirm / Cancel buttons
     local confirmBtn = Instance.new("TextButton")
-    confirmBtn.Size = UDim2.new(0, 200, 0, 40)
-    confirmBtn.Position = UDim2.new(0.5, -210, 1, -52)
-    confirmBtn.BackgroundColor3 = STYLE.AcceptGreen
-    confirmBtn.Text = "  ✓  Confirm Trade"
+    confirmBtn.Size = UDim2.fromOffset(200, 40)
+    confirmBtn.Position = UDim2.new(0.5, -210, 1, -50)
+    confirmBtn.BackgroundColor3 = Color3.fromRGB(52, 165, 76)
+    confirmBtn.Text = "CONFIRM TRADE"
     confirmBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     confirmBtn.Font = Enum.Font.GothamBold
-    confirmBtn.TextSize = 14
+    confirmBtn.TextSize = 15
     confirmBtn.BorderSizePixel = 0
     confirmBtn.Parent = confirmWin
-    
-    local confirmUIC = Instance.new("UICorner")
-    confirmUIC.CornerRadius = UDim.new(0, 4)
-    confirmUIC.Parent = confirmBtn
+    addCorner(confirmBtn, 6)
     
     local cancelBtn = Instance.new("TextButton")
-    cancelBtn.Size = UDim2.new(0, 200, 0, 40)
-    cancelBtn.Position = UDim2.new(0.5, 10, 1, -52)
-    cancelBtn.BackgroundColor3 = STYLE.DeclineRed
-    cancelBtn.Text = "  ✕  Cancel"
+    cancelBtn.Size = UDim2.fromOffset(200, 40)
+    cancelBtn.Position = UDim2.new(0.5, 10, 1, -50)
+    cancelBtn.BackgroundColor3 = Color3.fromRGB(190, 57, 57)
+    cancelBtn.Text = "CANCEL"
     cancelBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     cancelBtn.Font = Enum.Font.GothamBold
-    cancelBtn.TextSize = 14
+    cancelBtn.TextSize = 15
     cancelBtn.BorderSizePixel = 0
     cancelBtn.Parent = confirmWin
-    
-    local cancelUIC = Instance.new("UICorner")
-    cancelUIC.CornerRadius = UDim.new(0, 4)
-    cancelUIC.Parent = cancelBtn
+    addCorner(cancelBtn, 6)
     
     cancelBtn.MouseButton1Click:Connect(function()
         log("CONFIRM_CANCEL", "User cancelled at final confirmation")
         confirmGui:Destroy()
+        self._confirmOpen = false
         self:resetAcceptState()
-        self.AcceptBtn.Text = "  ✓  Accept Trade"
-        self:setStatus("Trade cancelled", STYLE.TextSecondary)
+        self:setStatus("Trade cancelled", Color3.fromRGB(190, 190, 195))
     end)
     
     confirmBtn.MouseButton1Click:Connect(function()
-        log("TRADE_CONFIRMED", "User confirmed the trade")
+        log("TRADE_CONFIRMED", "User confirmed the trade (final)")
+        confirmBtn.Text = "CONFIRMED ✓"
+        confirmBtn.BackgroundColor3 = Color3.fromRGB(45, 120, 55)
+        confirmBtn.Active = false
         
-        -- Flash animation
+        -- Flash effect
         local flash = Instance.new("Frame")
-        flash.Size = UDim2.new(1, 0, 1, 0)
-        flash.BackgroundColor3 = Color3.fromRGB(0, 255, 50)
+        flash.Size = UDim2.fromScale(1, 1)
+        flash.BackgroundColor3 = Color3.fromRGB(60, 220, 80)
         flash.BackgroundTransparency = 1
         flash.BorderSizePixel = 0
         flash.ZIndex = 100
         flash.Parent = confirmGui
         
-        local tween = TweenService:Create(flash, TweenInfo.new(0.2), { BackgroundTransparency = 0.5 })
+        local tInfo = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(flash, tInfo, { BackgroundTransparency = 0.6 })
         tween:Play()
         tween.Completed:Wait()
         
-        local successLabel = makeTextLabel(confirmGui, UDim2.new(1, -200, 0, 60), UDim2.new(0, 100, 0.5, -30),
-            "TRADE COMPLETED!", Color3.fromRGB(0, 255, 50), 36, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
-        successLabel.ZIndex = 101
+        local doneText = createText(confirmGui, "TRADE COMPLETED!", UDim2.new(1, -200, 0, 50), UDim2.new(0, 100, 0.5, -25), 34)
+        doneText.ZIndex = 101
+        doneText.TextColor3 = Color3.fromRGB(60, 220, 80)
         
-        makeTextLabel(confirmGui, UDim2.new(1, -200, 0, 30), UDim2.new(0, 100, 0.5, 20),
-            "Items will appear in your inventory", STYLE.TextSecondary, 14, Enum.Font.Gotham, Enum.TextXAlignment.Center):SetAttribute("ZIndex", 101)
+        createText(confirmGui, "Items have been added to your inventory", UDim2.new(1, -200, 0, 24), UDim2.new(0, 100, 0.5, 28), 14):SetAttribute("TextColor3", Color3.fromRGB(190, 190, 195))
         
         task.wait(3)
         confirmGui:Destroy()
@@ -1305,32 +1435,8 @@ function TradeUI:showConfirmationScreen()
     
     -- Fade in
     confirmWin.BackgroundTransparency = 1
-    local fadeTween = TweenService:Create(confirmWin, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-        { BackgroundTransparency = 0 })
+    local fadeTween = TweenService:Create(confirmWin, TweenInfo.new(0.3), { BackgroundTransparency = 0 })
     fadeTween:Play()
-end
-
--- =============================================================================
--- STATUS HELPER
--- =============================================================================
-function TradeUI:setStatus(text, color)
-    self.StatusLabel.Text = text
-    if color then
-        self.StatusLabel.TextColor3 = color
-    end
-end
-
--- =============================================================================
--- FORMAT VALUE
--- =============================================================================
-function TradeUI:formatValue(val)
-    if val >= 1000000 then
-        return string.format("%.1fM", val / 1000000)
-    elseif val >= 1000 then
-        return string.format("%.1fK", val / 1000)
-    else
-        return tostring(val)
-    end
 end
 
 -- =============================================================================
@@ -1344,122 +1450,112 @@ function TradeUI:destroy()
 end
 
 -- =============================================================================
--- SETUP MENU BUTTON (to start trade with configurable name)
+-- SETUP MENU (configurable username)
 -- =============================================================================
 local function createSetupMenu()
     local menuGui = Instance.new("ScreenGui")
-    menuGui.Name = "MM2TradeSetup"
+    menuGui.Name = "TradeSetup"
     menuGui.ResetOnSpawn = false
-    menuGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     menuGui.Parent = playerGui
     
-    local menuFrame = makeRoundedFrame(menuGui, UDim2.new(0, 320, 0, 220), 
-        UDim2.new(0.5, -160, 0.5, -110), STYLE.BgDark, 8)
+    local bg = Instance.new("Frame")
+    bg.Size = UDim2.fromScale(1, 1)
+    bg.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    bg.BackgroundTransparency = 0.55
+    bg.BorderSizePixel = 0
+    bg.Parent = menuGui
+    bg.Active = true
     
-    -- Border
-    local borderLine = Instance.new("Frame")
-    borderLine.Size = UDim2.new(1, 0, 0, 2)
-    borderLine.BackgroundColor3 = STYLE.Accent
-    borderLine.BorderSizePixel = 0
-    borderLine.Parent = menuFrame
+    local menuFrame = Instance.new("Frame")
+    menuFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    menuFrame.Position = UDim2.fromScale(0.5, 0.5)
+    menuFrame.Size = UDim2.fromOffset(320, 200)
+    menuFrame.BackgroundColor3 = Color3.fromRGB(38, 38, 44)
+    menuFrame.BorderSizePixel = 0
+    menuFrame.Parent = menuGui
+    addCorner(menuFrame, 8)
+    addStroke(menuFrame, Color3.fromRGB(15, 15, 18), 2)
     
-    local borderUIC = Instance.new("UICorner")
-    borderUIC.CornerRadius = UDim.new(0, 8)
-    borderUIC.Parent = borderLine
+    local topBar = Instance.new("Frame")
+    topBar.Size = UDim2.new(1, 0, 0, 40)
+    topBar.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    topBar.BorderSizePixel = 0
+    topBar.Parent = menuFrame
+    addCorner(topBar, 8)
     
-    makeTextLabel(menuFrame, UDim2.new(1, -20, 0, 30), UDim2.new(0, 10, 0, 10),
-        "MM2 Fake Trade — Setup", STYLE.TextPrimary, 16, Enum.Font.GothamBold, Enum.TextXAlignment.Center)
+    local title = createText(topBar, "FAKE TRADE SETUP", UDim2.new(1, -50, 1, 0), UDim2.fromOffset(14, 0), 15)
+    title.TextXAlignment = Enum.TextXAlignment.Left
     
-    makeTextLabel(menuFrame, UDim2.new(1, -20, 0, 18), UDim2.new(0, 10, 0, 45),
-        "Trade Partner Username:", STYLE.TextSecondary, 12, Enum.Font.Gotham, Enum.TextXAlignment.Left)
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.fromOffset(28, 28)
+    closeBtn.Position = UDim2.new(1, -34, 0, 6)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(55, 55, 62)
+    closeBtn.Text = "×"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 18
+    closeBtn.Parent = topBar
+    addCorner(closeBtn, 5)
     
-    -- Username input
+    closeBtn.MouseButton1Click:Connect(function()
+        menuGui:Destroy()
+    end)
+    
+    createText(menuFrame, "Trade partner username:", UDim2.new(1, -30, 0, 18), UDim2.fromOffset(15, 50), 12):SetAttribute("TextColor3", Color3.fromRGB(190, 190, 195))
+    
     local nameBox = Instance.new("TextBox")
-    nameBox.Size = UDim2.new(1, -40, 0, 32)
-    nameBox.Position = UDim2.new(0, 20, 0, 66)
-    nameBox.BackgroundColor3 = Color3.fromRGB(25, 25, 38)
+    nameBox.Size = UDim2.new(1, -30, 0, 32)
+    nameBox.Position = UDim2.fromOffset(15, 72)
+    nameBox.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
     nameBox.Text = CONFIG.TradePartnerName
-    nameBox.TextColor3 = STYLE.TextPrimary
-    nameBox.PlaceholderText = "Username..."
-    nameBox.PlaceholderColor3 = STYLE.TextMuted
+    nameBox.TextColor3 = Color3.fromRGB(240, 240, 240)
+    nameBox.PlaceholderText = "Enter username..."
+    nameBox.PlaceholderColor3 = Color3.fromRGB(130, 130, 140)
     nameBox.Font = Enum.Font.Gotham
     nameBox.TextSize = 14
-    nameBox.BorderSizePixel = 0
+    nameBox.BorderSizePixel = 1
+    nameBox.BorderColor3 = Color3.fromRGB(85, 85, 94)
     nameBox.ClearTextOnFocus = false
     nameBox.Parent = menuFrame
+    addCorner(nameBox, 4)
     
-    local boxUIC = Instance.new("UICorner")
-    boxUIC.CornerRadius = UDim.new(0, 4)
-    boxUIC.Parent = nameBox
-    
-    -- Start trade button
     local startBtn = Instance.new("TextButton")
-    startBtn.Size = UDim2.new(1, -40, 0, 38)
-    startBtn.Position = UDim2.new(0, 20, 0, 110)
-    startBtn.BackgroundColor3 = STYLE.Accent
-    startBtn.Text = "  Start Fake Trade"
+    startBtn.Size = UDim2.new(1, -30, 0, 36)
+    startBtn.Position = UDim2.fromOffset(15, 112)
+    startBtn.BackgroundColor3 = Color3.fromRGB(52, 120, 200)
+    startBtn.Text = "START FAKE TRADE"
     startBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     startBtn.Font = Enum.Font.GothamBold
     startBtn.TextSize = 14
     startBtn.BorderSizePixel = 0
     startBtn.Parent = menuFrame
+    addCorner(startBtn, 6)
     
-    local startUIC = Instance.new("UICorner")
-    startUIC.CornerRadius = UDim.new(0, 4)
-    startUIC.Parent = startBtn
-    
-    -- Status
-    local statusLabel = makeTextLabel(menuFrame, UDim2.new(1, -20, 0, 20), UDim2.new(0, 10, 0, 155),
-        "Ready", STYLE.TextSecondary, 11, Enum.Font.Gotham, Enum.TextXAlignment.Center)
-    
-    -- Close button
-    local closeMenuBtn = Instance.new("TextButton")
-    closeMenuBtn.Size = UDim2.new(0, 24, 0, 24)
-    closeMenuBtn.Position = UDim2.new(1, -30, 0, 6)
-    closeMenuBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 65)
-    closeMenuBtn.Text = "✕"
-    closeMenuBtn.TextColor3 = Color3.fromRGB(200, 60, 60)
-    closeMenuBtn.Font = Enum.Font.GothamBold
-    closeMenuBtn.TextSize = 14
-    closeMenuBtn.BorderSizePixel = 0
-    closeMenuBtn.Parent = menuFrame
-    
-    local menuCloseUIC = Instance.new("UICorner")
-    menuCloseUIC.CornerRadius = UDim.new(0, 4)
-    menuCloseUIC.Parent = closeMenuBtn
-    
-    closeMenuBtn.MouseButton1Click:Connect(function()
-        menuGui:Destroy()
-    end)
+    local statusText = createText(menuFrame, "Ready", UDim2.new(1, -30, 0, 20), UDim2.fromOffset(15, 155), 11)
+    statusText.TextColor3 = Color3.fromRGB(140, 140, 150)
+    statusText.TextXAlignment = Enum.TextXAlignment.Center
     
     startBtn.MouseButton1Click:Connect(function()
         local name = nameBox.Text:match("^%s*(.-)%s*$") or nameBox.Text
         if #name < 2 then
-            statusLabel.Text = "Enter a valid username!"
-            statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+            statusText.Text = "Enter a valid username!"
+            statusText.TextColor3 = Color3.fromRGB(255, 150, 100)
             return
         end
         
-        CONFIG.TradePartnerName = name
-        log("TRADE_STARTED", string.format("Fake trade started with target: %s", name))
-        statusLabel.Text = string.format("Starting trade with %s...", name)
-        statusLabel.TextColor3 = Color3.fromRGB(0, 255, 100)
-        
-        -- Destroy setup, open trade
+        log("TRADE_STARTED", string.format("Fake trade with: %s", name))
         menuGui:Destroy()
         task.wait(0.3)
-        TradeUI.new()
+        TradeUI.new(name)
     end)
     
     -- Fade in
     menuFrame.BackgroundTransparency = 1
-    local fade = TweenService:Create(menuFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), 
-        { BackgroundTransparency = 0 })
-    fade:Play()
+    TweenService:Create(menuFrame, TweenInfo.new(0.3), { BackgroundTransparency = 0 }):Play()
 end
 
 -- =============================================================================
--- INIT — Show setup menu
+-- INIT
 -- =============================================================================
-log("SCRIPT_LOADED", "MM2 Fake Trade v2 loaded")
+log("SCRIPT_LOADED", "MM2 Fake Trade v3 loaded (exact replica)")
 createSetupMenu()
